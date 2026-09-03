@@ -4,12 +4,14 @@ import com.wordlearena.common.dto.ErrorResponse;
 import com.wordlearena.game.exception.GameAlreadyFinishedException;
 import com.wordlearena.game.exception.GameNotFoundException;
 import com.wordlearena.game.exception.InvalidGuessException;
+import jakarta.persistence.OptimisticLockException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 
 import java.time.LocalDateTime;
 import java.util.stream.Collectors;
@@ -42,6 +44,18 @@ public class GlobalExceptionHandler {
                 request.getRequestURI()
         );
     }
+    @ExceptionHandler(OptimisticLockException.class)
+    public ResponseEntity<ErrorResponse> handleOptimisticLock(
+            OptimisticLockException exception,
+            HttpServletRequest request) {
+
+        return buildResponse(
+                HttpStatus.CONFLICT,
+                "CONCURRENT_MODIFICATION",
+                "The resource was modified by another request. Please retry.",
+                request.getRequestURI()
+        );
+    }
 
     @ExceptionHandler(InvalidGuessException.class)
     public ResponseEntity<ErrorResponse> handleInvalidGuess(
@@ -52,6 +66,18 @@ public class GlobalExceptionHandler {
                 HttpStatus.BAD_REQUEST,
                 "INVALID_GUESS",
                 exception.getMessage(),
+                request.getRequestURI()
+        );
+    }
+    @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
+    public ResponseEntity<ErrorResponse> handleOptimisticLock(
+            ObjectOptimisticLockingFailureException exception,
+            HttpServletRequest request) {
+
+        return buildResponse(
+                HttpStatus.CONFLICT,
+                "CONCURRENT_MODIFICATION",
+                "The resource was modified by another request. Please retry.",
                 request.getRequestURI()
         );
     }

@@ -16,6 +16,9 @@ public class Game {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Version
+    private Long version;
+
     @Getter
     @Setter
     @Column
@@ -57,6 +60,10 @@ public class Game {
 
     public Long getId() {
         return id;
+    }
+
+    public Long getVersion() {
+        return version;
     }
 
     public User getUser() {
