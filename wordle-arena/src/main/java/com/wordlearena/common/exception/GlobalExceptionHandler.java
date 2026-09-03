@@ -4,6 +4,7 @@ import com.wordlearena.common.dto.ErrorResponse;
 import com.wordlearena.game.exception.GameAlreadyFinishedException;
 import com.wordlearena.game.exception.GameNotFoundException;
 import com.wordlearena.game.exception.InvalidGuessException;
+import com.wordlearena.user.exception.UserNotFoundException;
 import jakarta.persistence.OptimisticLockException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
@@ -116,6 +117,18 @@ public class GlobalExceptionHandler {
                 HttpStatus.BAD_REQUEST,
                 "VALIDATION_ERROR",
                 message,
+                request.getRequestURI()
+        );
+    }
+    @ExceptionHandler(UserNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleUserNotFound(
+            UserNotFoundException exception,
+            HttpServletRequest request) {
+
+        return buildResponse(
+                HttpStatus.NOT_FOUND,
+                "USER_NOT_FOUND",
+                exception.getMessage(),
                 request.getRequestURI()
         );
     }

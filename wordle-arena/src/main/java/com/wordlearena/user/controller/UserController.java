@@ -2,6 +2,7 @@ package com.wordlearena.user.controller;
 
 import com.wordlearena.auth.dto.UserResponse;
 import com.wordlearena.user.entity.User;
+import com.wordlearena.user.exception.UserNotFoundException;
 import com.wordlearena.user.repository.UserRepository;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -28,7 +29,7 @@ public class UserController {
         User user = userRepository
                 .findByUsername(username)
                 .orElseThrow(() ->
-                        new RuntimeException("User not found")
+                        new UserNotFoundException("User not found")
                 );
 
         UserResponse response = new UserResponse(
