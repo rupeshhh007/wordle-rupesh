@@ -3,6 +3,7 @@ package com.wordlearena.stats.controller;
 import com.wordlearena.stats.dto.StatsResponse;
 import com.wordlearena.stats.service.StatsService;
 import com.wordlearena.user.entity.User;
+import com.wordlearena.user.exception.UserNotFoundException;
 import com.wordlearena.user.repository.UserRepository;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -38,8 +39,12 @@ public class StatsController {
 
     private User getAuthenticatedUser(Authentication authentication) {
 
-        return userRepository.findByUsername(authentication.getName())
+        return userRepository
+                .findByUsername(authentication.getName())
                 .orElseThrow(() ->
-                        new IllegalArgumentException("Authenticated user not found"));
+                        new UserNotFoundException(
+                                "Authenticated user not found"
+                        )
+                );
     }
 }
