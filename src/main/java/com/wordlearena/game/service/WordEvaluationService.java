@@ -1,7 +1,9 @@
 package com.wordlearena.game.service;
 
 import com.wordlearena.game.logic.LetterResult;
+import org.springframework.stereotype.Service;
 
+@Service
 public class WordEvaluationService {
 
     public LetterResult[] evaluate(String answer, String guess) {

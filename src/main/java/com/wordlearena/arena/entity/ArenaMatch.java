@@ -1,0 +1,170 @@
+package com.wordlearena.arena.entity;
+
+import com.wordlearena.game.entity.Word;
+import com.wordlearena.user.entity.User;
+import jakarta.persistence.*;
+
+import java.time.LocalDateTime;
+
+@Entity
+@Table(
+        name = "arena_matches",
+        indexes = {
+                @Index(
+                        name = "idx_arena_player1",
+                        columnList = "player1_id"
+                ),
+                @Index(
+                        name = "idx_arena_player2",
+                        columnList = "player2_id"
+                ),
+                @Index(
+                        name = "idx_arena_status",
+                        columnList = "status"
+                )
+        }
+)
+public class ArenaMatch {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "player1_id", nullable = false)
+    private User player1;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "player2_id")
+    private User player2;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "word_id", nullable = false)
+    private Word word;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private ArenaMatchStatus status;
+
+    @Enumerated(EnumType.STRING)
+    private ArenaWinner winner;
+
+    @Column(nullable = false)
+    private Integer player1Attempts = 0;
+
+    @Column(nullable = false)
+    private Integer player2Attempts = 0;
+
+    @Column(nullable = false)
+    private LocalDateTime createdAt;
+
+    private LocalDateTime startedAt;
+
+    private LocalDateTime completedAt;
+
+    @Column(nullable = false)
+    private boolean ratingUpdated = false;
+
+    @Version
+    private Long version;
+
+    public ArenaMatch() {
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public User getPlayer1() {
+        return player1;
+    }
+
+    public void setPlayer1(User player1) {
+        this.player1 = player1;
+    }
+
+    public User getPlayer2() {
+        return player2;
+    }
+
+    public void setPlayer2(User player2) {
+        this.player2 = player2;
+    }
+
+    public Word getWord() {
+        return word;
+    }
+
+    public void setWord(Word word) {
+        this.word = word;
+    }
+
+    public ArenaMatchStatus getStatus() {
+        return status;
+    }
+
+    public void setStatus(ArenaMatchStatus status) {
+        this.status = status;
+    }
+
+    public ArenaWinner getWinner() {
+        return winner;
+    }
+
+    public void setWinner(ArenaWinner winner) {
+        this.winner = winner;
+    }
+
+    public Integer getPlayer1Attempts() {
+        return player1Attempts;
+    }
+
+    public void setPlayer1Attempts(Integer player1Attempts) {
+        this.player1Attempts = player1Attempts;
+    }
+
+    public Integer getPlayer2Attempts() {
+        return player2Attempts;
+    }
+
+    public void setPlayer2Attempts(Integer player2Attempts) {
+        this.player2Attempts = player2Attempts;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public LocalDateTime getStartedAt() {
+        return startedAt;
+    }
+
+    public void setStartedAt(LocalDateTime startedAt) {
+        this.startedAt = startedAt;
+    }
+
+    public LocalDateTime getCompletedAt() {
+        return completedAt;
+    }
+
+    public void setCompletedAt(LocalDateTime completedAt) {
+        this.completedAt = completedAt;
+    }
+
+    public boolean isRatingUpdated() {
+        return ratingUpdated;
+    }
+
+    public void setRatingUpdated(boolean ratingUpdated) {
+        this.ratingUpdated = ratingUpdated;
+    }
+
+    public Long getVersion() {
+        return version;
+    }
+}
+

@@ -1,0 +1,28 @@
+package com.wordlearena.daily.dto;
+
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
+
+public class DailyGuessRequest {
+
+    @NotBlank(message = "Guess cannot be blank")
+    @Size(
+            min = 5,
+            max = 5,
+            message = "Guess must contain exactly 5 letters"
+    )
+    @Pattern(
+            regexp = "^[a-zA-Z]{5}$",
+            message = "Guess must contain only letters"
+    )
+    private String guess;
+
+    public String getGuess() {
+        return guess;
+    }
+
+    public void setGuess(String guess) {
+        this.guess = guess;
+    }
+}

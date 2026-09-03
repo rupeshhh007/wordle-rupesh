@@ -2,8 +2,10 @@ package com.wordlearena.game.entity;
 
 import com.wordlearena.user.entity.User;
 import jakarta.persistence.*;
+import lombok.Getter;
 import lombok.Setter;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
@@ -13,6 +15,11 @@ public class Game {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Getter
+    @Setter
+    @Column
+    private LocalDate gameDate;
 
     @Setter
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
