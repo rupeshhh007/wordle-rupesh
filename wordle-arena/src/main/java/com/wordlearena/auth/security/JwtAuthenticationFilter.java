@@ -39,7 +39,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String authHeader =
                 request.getHeader("Authorization");
 
-        // No Authorization header
         if (authHeader == null ||
                 !authHeader.startsWith("Bearer ")) {
 
@@ -50,7 +49,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String token =
                 authHeader.substring(7);
 
-        // Invalid JWT
         if (!jwtService.isTokenValid(token)) {
 
             filterChain.doFilter(request, response);
@@ -60,13 +58,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String username;
 
         try {
-            username = jwtService.extractUsername(token);
+
+            username =
+                    jwtService.extractUsername(token);
+
         } catch (Exception exception) {
+
             filterChain.doFilter(request, response);
             return;
         }
 
-        // Don't overwrite an existing authentication
         if (SecurityContextHolder
                 .getContext()
                 .getAuthentication() == null) {

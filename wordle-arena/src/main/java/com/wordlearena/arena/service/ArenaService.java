@@ -11,6 +11,7 @@ import com.wordlearena.arena.entity.ArenaMatchStatus;
 import com.wordlearena.arena.entity.ArenaWinner;
 import com.wordlearena.arena.repository.ArenaGuessRepository;
 import com.wordlearena.arena.repository.ArenaMatchRepository;
+import com.wordlearena.common.exception.ResourceForbiddenException;
 import com.wordlearena.game.entity.Word;
 import com.wordlearena.game.logic.LetterResult;
 import com.wordlearena.game.repository.WordRepository;
@@ -438,7 +439,7 @@ public class ArenaService {
 
         if (!isPlayer1 && !isPlayer2) {
 
-            throw new SecurityException(
+            throw new ResourceForbiddenException(
                     "You are not part of this Arena match"
             );
         }
