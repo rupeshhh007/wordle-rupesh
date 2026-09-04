@@ -22,28 +22,8 @@ export const Keyboard: React.FC<KeyboardProps> = ({ keyboardState, onKeyPress, d
     }
   };
 
-  const handleKeyDown = useCallback(
-    (e: KeyboardEvent) => {
-      if (disabled) return;
-      
-      const key = e.key.toUpperCase();
-      if (/^[A-Z]$/.test(key)) {
-        onKeyPress(key);
-      } else if (key === 'ENTER') {
-        onKeyPress('ENTER');
-      } else if (key === 'BACKSPACE') {
-        onKeyPress('BACKSPACE');
-      }
-    },
-    [disabled, onKeyPress]
-  );
-
-  useEffect(() => {
-    window.addEventListener('keydown', handleKeyDown);
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [handleKeyDown]);
+  // The Keyboard component strictly renders the virtual keys.
+  // Physical keyboard input is managed entirely by useGameInput.
 
   const getKeyClass = (key: string) => {
     let classes = 'flex items-center justify-center font-display font-bold text-sm rounded-lg transition-colors active:translate-y-[1px] ';

@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 
 interface UseGameInputProps {
   onSubmit: (guess: string) => void;
@@ -36,6 +36,26 @@ export function useGameInput({ onSubmit, isActive }: UseGameInputProps) {
       });
     }
   }, [isActive, currentGuess, onSubmit, triggerShake]);
+
+  // SINGLE owner of physical keyboard input
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore key events when user is holding modifier keys like Cmd/Ctrl to allow normal browser shortcuts
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      
+      const key = e.key.toUpperCase();
+      if (/^[A-Z]$/.test(key)) {
+        handleKeyPress(key);
+      } else if (key === 'ENTER') {
+        handleKeyPress('ENTER');
+      } else if (key === 'BACKSPACE') {
+        handleKeyPress('BACKSPACE');
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleKeyPress]);
 
   const clearGuess = useCallback(() => {
     setCurrentGuess('');

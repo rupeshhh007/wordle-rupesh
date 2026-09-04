@@ -44,26 +44,18 @@ export default function DailyPage() {
   const [stats, setStats] = useState<StatsResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // We wrap our submit logic so it can be called by UI keyboard or physical Enter key
-  const submitGuess = useCallback(async () => {
-    // Rely on currentGuess being enclosed if useGameInput manages it
-    // Note: The actual currentGuess value comes from useGameInput, so we need it in scope
-  }, []); // We will redefine this below to capture currentGuess properly
+  
 
-  const { currentGuess, handleKeyPress, shake, clearGuess } = useGameInput({
-    onSubmit: submitGuess,
-    isActive: status === 'IN_PROGRESS' && !isSubmitting
-  });
 
-  // Redefine submit logic with fresh state
-  const handleSubmit = async () => {
-    if (currentGuess.length !== 5 || isSubmitting || status !== 'IN_PROGRESS') return;
+
+  const handleSubmit = async (guess: string) => {
+    if (guess.length !== 5 || isSubmitting || status !== 'IN_PROGRESS') return;
 
     setIsSubmitting(true);
     setError(null);
 
     try {
-      const res = await submitDailyGuess({ guess: currentGuess.toLowerCase() });
+      const res = await submitDailyGuess({ guess: guess.toLowerCase() });
       
       setGuesses((prev) => {
         const next = [...prev, res];
@@ -92,13 +84,12 @@ export default function DailyPage() {
     }
   };
 
-  const onKeyPress = (key: string) => {
-    if (key === 'ENTER') {
-      handleSubmit();
-    } else {
-      handleKeyPress(key);
-    }
-  };
+  const { currentGuess, handleKeyPress, shake, clearGuess } = useGameInput({
+    onSubmit: handleSubmit,
+    isActive: status === 'IN_PROGRESS' && !isSubmitting
+  });
+
+
 
   useEffect(() => {
     let mounted = true;
@@ -233,7 +224,7 @@ export default function DailyPage() {
           <div className="flex flex-col items-center">
             <Keyboard
               keyboardState={keyboardState}
-              onKeyPress={onKeyPress}
+              onKeyPress={handleKeyPress}
               disabled={!isActive}
             />
             {error && (

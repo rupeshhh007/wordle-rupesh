@@ -7,6 +7,7 @@ export const metadata: Metadata = {
     "Competitive word game platform — Daily challenges, Practice mode, and 1v1 Arena matches",
 };
 
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html
