@@ -1,0 +1,165 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-bg: #FFF8F0;
+  --color-surface: #FFFFFF;
+  --color-border: #1A1A2E;
+  --color-text: #1A1A2E;
+  --color-text-secondary: #6B7280;
+
+  --color-correct: #6BCB77;
+  --color-present: #FFD93D;
+  --color-absent: #787C7E;
+  --color-tile-empty: #E5E7EB;
+
+  --color-pastel-yellow: #FFF3CD;
+  --color-pastel-green: #D4EDDA;
+  --color-pastel-pink: #F8D7DA;
+  --color-pastel-blue: #CCE5FF;
+  --color-pastel-purple: #E8D5F5;
+  --color-pastel-orange: #FFE8CC;
+
+  --color-primary: #FFD93D;
+  --color-primary-hover: #FFC800;
+  --color-danger: #E74C3C;
+  --color-danger-hover: #C0392B;
+  --color-success: #6BCB77;
+
+  --shadow-brutal: 4px 4px 0px var(--color-border);
+  --shadow-brutal-sm: 2px 2px 0px var(--color-border);
+  --shadow-brutal-lg: 6px 6px 0px var(--color-border);
+
+  --radius-brutal: 12px;
+  --radius-sm: 8px;
+
+  --border-w: 3px;
+
+  --font-display: system-ui, sans-serif;
+  --font-body: system-ui, sans-serif;
+}
+
+/* ============ BASE ============ */
+
+body {
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-body);
+}
+
+/* ============ UTILITY CLASSES ============ */
+
+.card-brutal {
+  background: var(--color-surface);
+  border: var(--border-w) solid var(--color-border);
+  border-radius: var(--radius-brutal);
+  box-shadow: var(--shadow-brutal);
+}
+
+.btn-brutal {
+  border: var(--border-w) solid var(--color-border);
+  border-radius: var(--radius-brutal);
+  box-shadow: var(--shadow-brutal-sm);
+  font-family: var(--font-display);
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+
+.btn-brutal:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: var(--shadow-brutal);
+}
+
+.btn-brutal:active {
+  transform: translate(2px, 2px);
+  box-shadow: none;
+}
+
+.btn-brutal:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: var(--shadow-brutal-sm);
+}
+
+/* ============ TILE ANIMATIONS ============ */
+
+@keyframes tile-flip {
+  0% { transform: scaleY(1); }
+  50% { transform: scaleY(0); }
+  100% { transform: scaleY(1); }
+}
+
+@keyframes tile-pop {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.12); }
+  100% { transform: scale(1); }
+}
+
+@keyframes tile-shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-4px); }
+  40%, 80% { transform: translateX(4px); }
+}
+
+@keyframes pulse-border {
+  0%, 100% { border-color: var(--color-border); }
+  50% { border-color: var(--color-primary); }
+}
+
+@keyframes bounce-in {
+  0% { transform: scale(0.8); opacity: 0; }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.animate-tile-flip {
+  animation: tile-flip 0.5s ease-in-out;
+}
+
+.animate-tile-pop {
+  animation: tile-pop 0.15s ease-in-out;
+}
+
+.animate-tile-shake {
+  animation: tile-shake 0.4s ease-in-out;
+}
+
+.animate-pulse-border {
+  animation: pulse-border 2s ease-in-out infinite;
+}
+
+.animate-bounce-in {
+  animation: bounce-in 0.4s ease-out;
+}
+
+/* ============ REDUCED MOTION ============ */
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-tile-flip,
+  .animate-tile-pop,
+  .animate-tile-shake,
+  .animate-pulse-border,
+  .animate-bounce-in {
+    animation: none;
+  }
+
+  .btn-brutal {
+    transition: none;
+  }
+}
+
+/* ============ SCROLLBAR ============ */
+
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-bg);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 4px;
+}
