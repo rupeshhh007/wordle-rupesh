@@ -14,6 +14,7 @@ import {
 import { GameBoard } from '@/components/game/GameBoard';
 import { Keyboard } from '@/components/game/Keyboard';
 import { useGameInput } from '@/hooks/useGameInput';
+import { Flame } from 'lucide-react';
 import type { StatsResponse } from '@/types/api';
 
 function updateKeyboardState(
@@ -160,15 +161,19 @@ export default function DailyPage() {
     <div className="flex min-h-screen flex-col items-center py-12 px-4 bg-bg">
       <div className="w-full max-w-lg">
         <header className="mb-8 flex flex-col items-center text-center">
-          <h1 className="font-display font-bold text-2xl text-border mb-2">
-            Daily Challenge
+          <span className="text-xs font-display font-black tracking-widest text-border/70 uppercase px-3 py-0.5 bg-pastel-yellow border-2 border-border rounded-sm shadow-[1px_1px_0px_#1A1A2E] mb-2">
+            DAILY WORDLE
+          </span>
+          <h1 className="font-display font-black text-3xl sm:text-4xl text-border tracking-tight">
+            Today&apos;s Challenge
           </h1>
-          <p className="font-body text-border/80 font-medium">
+          <p className="font-body text-border/70 font-medium text-sm mt-1">
             {todayFormatted}
           </p>
           {stats?.currentStreak !== undefined && stats.currentStreak > 0 && (
-            <div className="mt-3 inline-block rounded-brutal border-3 border-border bg-pastel-yellow px-4 py-1 font-bold text-sm shadow-brutal text-border">
-              🔥 {stats.currentStreak} Day Streak
+            <div className="mt-3 inline-flex items-center gap-1.5 rounded-brutal border-2 border-border bg-pastel-yellow px-3 py-1 font-display font-bold text-xs shadow-brutal-sm text-border">
+              <Flame className="w-3.5 h-3.5 text-orange-500 fill-orange-500" />
+              <span>{stats.currentStreak} Day Streak</span>
             </div>
           )}
         </header>
@@ -184,40 +189,55 @@ export default function DailyPage() {
         </div>
 
         {(status === 'WON' || status === 'LOST') ? (
-          <div className="card-brutal animate-bounce-in mt-4 flex flex-col items-center bg-surface border-3 border-border rounded-brutal p-6 shadow-brutal text-center text-border">
-            {status === 'WON' ? (
-              <>
-                <h2 className="font-display text-2xl font-bold mb-2">🎉 Brilliant!</h2>
-                <p className="font-body mb-4 font-medium">Solved in {guesses.length} attempt(s)</p>
-              </>
-            ) : (
-              <>
-                <h2 className="font-display text-2xl font-bold mb-2">Better luck tomorrow!</h2>
-                <p className="font-body mb-4 font-medium text-border/80">
-                  Keep playing to improve your skills.
-                </p>
-              </>
-            )}
+          <div className="relative w-full">
+            <div className="card-brutal mt-4 flex flex-col items-center bg-surface border-3 border-border rounded-brutal p-6 shadow-brutal text-center text-border">
+              {status === 'WON' ? (
+                <>
+                  <span className="px-3 py-1 rounded-sm bg-correct text-white border-2 border-border text-xs font-display font-black tracking-wider uppercase mb-3 shadow-[1px_1px_0px_#1A1A2E]">
+                    PUZZLE SOLVED
+                  </span>
+                  <h2 className="font-display text-3xl font-black text-border">
+                    Brilliant!
+                  </h2>
+                  <p className="font-body mb-5 font-semibold text-border/80 text-sm mt-1">
+                    Solved in {guesses.length} {guesses.length === 1 ? 'attempt' : 'attempts'}
+                  </p>
+                </>
+              ) : (
+                <>
+                  <span className="px-3 py-1 rounded-sm bg-absent text-white border-2 border-border text-xs font-display font-black tracking-wider uppercase mb-3 shadow-[1px_1px_0px_#1A1A2E]">
+                    ROUND OVER
+                  </span>
+                  <h2 className="font-display text-3xl font-black text-border">
+                    Better luck tomorrow!
+                  </h2>
+                  <p className="font-body mb-5 font-semibold text-border/80 text-sm mt-1">
+                    Come back tomorrow for a fresh word puzzle.
+                  </p>
+                </>
+              )}
 
-            {stats && (
-              <p className="font-body mb-6 font-bold text-lg bg-pastel-green px-4 py-2 rounded-brutal border-2 border-border shadow-brutal-sm inline-block">
-                Current Streak: {stats.currentStreak} days
-              </p>
-            )}
+              {stats && (
+                <div className="mb-6 font-display font-bold text-xs bg-pastel-green px-4 py-1.5 rounded-brutal border-2 border-border shadow-brutal-sm inline-flex items-center gap-2">
+                  <Flame className="w-3.5 h-3.5 text-orange-500 fill-orange-500" />
+                  <span>Current Streak: {stats.currentStreak} days</span>
+                </div>
+              )}
 
-            <div className="flex gap-4 w-full justify-center">
-              <Link 
-                href="/stats"
-                className="px-6 py-2 rounded-brutal border-3 border-border bg-pastel-purple font-bold hover:-translate-y-1 hover:shadow-brutal transition-all active:translate-y-0 active:shadow-none"
-              >
-                View Stats
-              </Link>
-              <Link 
-                href="/"
-                className="px-6 py-2 rounded-brutal border-3 border-border bg-pastel-blue font-bold hover:-translate-y-1 hover:shadow-brutal transition-all active:translate-y-0 active:shadow-none"
-              >
-                Home
-              </Link>
+              <div className="flex gap-4 w-full justify-center">
+                <Link 
+                  href="/stats"
+                  className="btn-brutal px-6 py-2.5 bg-pastel-purple text-border font-bold text-sm"
+                >
+                  View Stats
+                </Link>
+                <Link 
+                  href="/"
+                  className="btn-brutal px-6 py-2.5 bg-pastel-blue text-border font-bold text-sm"
+                >
+                  Dashboard
+                </Link>
+              </div>
             </div>
           </div>
         ) : (

@@ -63,9 +63,11 @@ export default function RegisterPage() {
           <h1 className="font-display font-black text-5xl text-border tracking-tight">
             WORDLE
           </h1>
-          <h2 className="font-display font-black text-5xl text-primary tracking-tight -mt-1">
-            ARENA
-          </h2>
+          <div className="flex items-center justify-center gap-1.5 -mt-1">
+            <h2 className="font-display font-black text-5xl text-primary tracking-tight">
+              ARENA
+            </h2>
+          </div>
           <p className="font-body text-text-secondary mt-2">
             Create your account
           </p>

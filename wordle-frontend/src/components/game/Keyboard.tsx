@@ -26,31 +26,25 @@ export const Keyboard: React.FC<KeyboardProps> = ({ keyboardState, onKeyPress, d
   // Physical keyboard input is managed entirely by useGameInput.
 
   const getKeyClass = (key: string) => {
-    let classes = 'flex items-center justify-center font-display font-bold text-sm rounded-lg transition-colors active:translate-y-[1px] ';
+    let classes = 'btn-key flex items-center justify-center font-display font-bold text-sm rounded-lg ';
     
     if (key === 'ENTER' || key === 'BACKSPACE') {
-      classes += 'min-w-[60px] sm:min-w-[72px] h-[52px] sm:h-[58px] text-xs ';
+      classes += 'min-w-[58px] sm:min-w-[70px] h-[50px] sm:h-[56px] text-xs ';
     } else {
-      classes += 'min-w-[32px] sm:min-w-[40px] h-[52px] sm:h-[58px] ';
+      classes += 'min-w-[32px] sm:min-w-[40px] h-[50px] sm:h-[56px] ';
     }
 
     const state = keyboardState.get(key);
     if (state === 'CORRECT') {
-      classes += 'bg-correct text-white border-2 border-transparent ';
+      classes += 'bg-correct text-white border-border ';
     } else if (state === 'PRESENT') {
-      classes += 'bg-present text-border border-2 border-transparent ';
+      classes += 'bg-present text-border border-border ';
     } else if (state === 'ABSENT') {
-      classes += 'bg-absent text-white border-2 border-transparent ';
+      classes += 'bg-absent text-white border-border ';
     } else {
-      classes += 'bg-surface border-2 border-border text-border ';
+      classes += 'bg-surface text-border border-border ';
     }
     
-    if (disabled) {
-      classes += 'opacity-50 cursor-not-allowed ';
-    } else {
-      classes += 'cursor-pointer hover:opacity-90 ';
-    }
-
     return classes;
   };
 

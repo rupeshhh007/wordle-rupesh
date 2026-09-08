@@ -7,6 +7,7 @@ import type { GameDetailsResponse } from "@/types/api";
 import { toBoardGuess } from "@/types/api";
 import { GameBoard } from "@/components/game/GameBoard";
 import { ArrowLeft } from "lucide-react";
+import { LoadingState } from "@/components/ui/LoadingState";
 
 const STATUS_LABELS: Record<string, string> = {
   IN_PROGRESS: "In Progress",
@@ -57,13 +58,7 @@ export default function GameDetailPage({
   }, [gameIdNum]);
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <p className="font-display text-text-secondary animate-pulse">
-          Loading game...
-        </p>
-      </div>
-    );
+    return <LoadingState message="Loading game details..." />;
   }
 
   if (error || !game) {

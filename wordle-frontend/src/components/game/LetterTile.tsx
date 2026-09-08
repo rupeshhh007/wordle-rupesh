@@ -21,7 +21,7 @@ export const LetterTile: React.FC<LetterTileProps> = ({ letter, result, state, d
     }
   }, [letter, state]);
 
-  const baseClasses = 'flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 text-2xl font-display font-bold uppercase transition-all duration-300';
+  const baseClasses = 'flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 text-2xl font-display font-bold uppercase rounded-lg select-none transition-all duration-200';
   let stateClasses = '';
 
   if (state === 'empty') {

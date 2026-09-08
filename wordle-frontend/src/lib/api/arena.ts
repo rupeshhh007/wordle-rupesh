@@ -10,6 +10,15 @@ export function findMatch(): Promise<ArenaMatchResponse> {
   return post<ArenaMatchResponse>("/api/arena/match");
 }
 
+export async function getActiveMatch(): Promise<ArenaMatchResponse | null> {
+  try {
+    const res = await get<ArenaMatchResponse | undefined>("/api/arena/active");
+    return res ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export function getMatch(matchId: number): Promise<ArenaMatchResponse> {
   return get<ArenaMatchResponse>(`/api/arena/${matchId}`);
 }
@@ -29,4 +38,8 @@ export function submitArenaGuess(
 
 export function cancelMatch(matchId: number): Promise<ArenaMatchResponse> {
   return post<ArenaMatchResponse>(`/api/arena/${matchId}/cancel`);
+}
+
+export function forfeitMatch(matchId: number): Promise<ArenaMatchResponse> {
+  return post<ArenaMatchResponse>(`/api/arena/${matchId}/forfeit`);
 }

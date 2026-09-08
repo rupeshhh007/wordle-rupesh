@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { getStats } from "@/lib/api/stats";
 import type { StatsResponse } from "@/types/api";
 import { BarChart3, Trophy, Flame, Target, Percent, Gamepad2 } from "lucide-react";
+import { LoadingState } from "@/components/ui/LoadingState";
 
 export default function StatsPage() {
   const [stats, setStats] = useState<StatsResponse | null>(null);
@@ -18,20 +19,14 @@ export default function StatsPage() {
   }, []);
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <p className="font-display text-text-secondary animate-pulse">
-          Loading statistics...
-        </p>
-      </div>
-    );
+    return <LoadingState message="Loading statistics..." />;
   }
 
   if (error) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="card-brutal p-6 text-center bg-pastel-pink">
-          <p className="font-display font-bold">{error}</p>
+        <div className="card-brutal p-6 text-center bg-pastel-pink border-3 border-border shadow-brutal">
+          <p className="font-display font-bold text-danger">{error}</p>
         </div>
       </div>
     );
@@ -46,17 +41,21 @@ export default function StatsPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="font-display font-bold text-3xl flex items-center gap-3">
-        <BarChart3 className="w-8 h-8" />
+      <h1 className="font-display font-black text-3xl flex items-center gap-3 text-border uppercase tracking-wide">
+        <div className="p-2 bg-pastel-blue rounded-brutal border-2 border-border shadow-brutal-sm">
+          <BarChart3 className="w-6 h-6 text-border" />
+        </div>
         Statistics
       </h1>
 
       {stats.gamesPlayed === 0 ? (
-        <div className="card-brutal p-8 text-center">
-          <Gamepad2 className="w-16 h-16 mx-auto text-text-secondary mb-4" />
-          <p className="font-display font-bold text-xl mb-2">No stats yet</p>
-          <p className="text-text-secondary">
-            Play your first game to start building your stats.
+        <div className="card-brutal p-8 text-center bg-surface flex flex-col items-center gap-3 border-dashed border-3 border-border/40">
+          <span className="text-xs font-display font-black tracking-widest text-border/70 uppercase px-3 py-1 bg-pastel-blue border-2 border-border rounded-sm shadow-[1px_1px_0px_#1A1A2E]">
+            NO DATA LOGGED
+          </span>
+          <h2 className="font-display font-black text-2xl text-border mt-1">No stats yet</h2>
+          <p className="font-body text-text-secondary text-sm max-w-xs">
+            Play your first game to start tracking your win rate and streaks.
           </p>
         </div>
       ) : (
@@ -158,7 +157,7 @@ function StatCard({
   const bg = accent ? accentClasses[accent] : "bg-surface";
 
   return (
-    <div className={`card-brutal p-4 ${bg}`}>
+    <div className={`card-brutal card-interactive p-4 ${bg}`}>
       <div className="flex items-center gap-2 text-text-secondary mb-1">
         {icon}
         <span className="font-display text-xs uppercase font-semibold">

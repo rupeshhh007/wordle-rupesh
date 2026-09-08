@@ -43,6 +43,21 @@ public class ArenaController {
     }
 
     /*
+     * Get the current active Arena match for the authenticated user, if any.
+     */
+    @GetMapping("/active")
+    public ResponseEntity<ArenaMatchResponse> getActiveMatch(
+            Authentication authentication) {
+
+        User user = getAuthenticatedUser(authentication);
+
+        return arenaService
+                .findActiveMatch(user)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.noContent().build());
+    }
+
+    /*
      * Get the current state of an Arena match.
      */
     @GetMapping("/{matchId}")
@@ -90,6 +105,25 @@ public class ArenaController {
 
         return ResponseEntity.ok(
                 arenaService.cancelMatch(
+                        matchId,
+                        user
+                )
+        );
+    }
+
+    /*
+     * Forfeit an in-progress match.
+     * The forfeiting player loses and the opponent wins.
+     */
+    @PostMapping("/{matchId}/forfeit")
+    public ResponseEntity<ArenaMatchResponse> forfeitMatch(
+            @PathVariable Long matchId,
+            Authentication authentication) {
+
+        User user = getAuthenticatedUser(authentication);
+
+        return ResponseEntity.ok(
+                arenaService.forfeitMatch(
                         matchId,
                         user
                 )

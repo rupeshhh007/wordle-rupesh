@@ -5,6 +5,8 @@ import { getMe } from "@/lib/api/users";
 import { useAuthStore } from "@/stores/auth-store";
 import type { UserResponse } from "@/types/api";
 import { User, Star, Mail, LogOut } from "lucide-react";
+import { LoadingState } from "@/components/ui/LoadingState";
+import { Avatar } from "@/components/ui/Avatar";
 
 export default function ProfilePage() {
   const storeUser = useAuthStore((s) => s.user);
@@ -26,37 +28,29 @@ export default function ProfilePage() {
   }, [setUser]);
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <p className="font-display text-text-secondary animate-pulse">
-          Loading profile...
-        </p>
-      </div>
-    );
+    return <LoadingState message="Loading profile..." />;
   }
 
   if (!user) return null;
 
   return (
     <div className="space-y-6 max-w-lg">
-      <h1 className="font-display font-bold text-3xl flex items-center gap-3">
-        <User className="w-8 h-8" />
+      <h1 className="font-display font-black text-3xl sm:text-4xl flex items-center gap-3 text-border uppercase tracking-wide">
+        <div className="p-2 bg-pastel-purple rounded-brutal border-2 border-border shadow-brutal-sm">
+          <User className="w-6 h-6 text-border" />
+        </div>
         Profile
       </h1>
 
       <div className="card-brutal p-8">
         {/* Avatar */}
         <div className="flex items-center gap-4 mb-6">
-          <div className="w-16 h-16 rounded-full bg-primary border-3 border-border flex items-center justify-center shadow-brutal-sm">
-            <span className="font-display font-black text-2xl text-border">
-              {user.username[0].toUpperCase()}
-            </span>
-          </div>
+          <Avatar username={user.username} size="lg" />
           <div>
-            <h2 className="font-display font-bold text-2xl">{user.username}</h2>
-            <div className="flex items-center gap-1 text-text-secondary">
-              <Star className="w-4 h-4 text-primary" />
-              <span className="font-display font-semibold">
+            <h2 className="font-display font-bold text-2xl text-border">{user.username}</h2>
+            <div className="flex items-center gap-1.5 text-text-secondary mt-0.5">
+              <Star className="w-4 h-4 text-primary fill-primary" />
+              <span className="font-display font-bold text-sm text-border">
                 {user.rating} rating
               </span>
             </div>
@@ -101,7 +95,7 @@ export default function ProfilePage() {
         {/* Logout */}
         <button
           onClick={logout}
-          className="btn-brutal w-full bg-surface text-danger mt-6 py-3 flex items-center justify-center gap-2"
+          className="btn-brutal w-full bg-surface text-danger mt-6 py-3 flex items-center justify-center gap-2 text-sm"
         >
           <LogOut className="w-5 h-5" />
           <span>Sign Out</span>

@@ -26,6 +26,18 @@ import java.util.List;
 @Service
 public class ArenaService {
 
+    /**
+     * WAITING matches older than this are considered expired.
+     * No opponent joined within the window.
+     */
+    private static final int WAITING_EXPIRY_MINUTES = 5;
+
+    /**
+     * IN_PROGRESS matches older than this are considered
+     * abandoned. Used for active-match queries.
+     */
+    private static final int IN_PROGRESS_EXPIRY_MINUTES = 30;
+
     private final ArenaMatchRepository arenaMatchRepository;
     private final ArenaGuessRepository arenaGuessRepository;
     private final WordRepository wordRepository;
@@ -49,21 +61,51 @@ public class ArenaService {
     @Transactional
     public ArenaMatchResponse findOrCreateMatch(User user) {
 
-        ArenaMatch waitingMatch =
-                arenaMatchRepository
-                        .findFirstByStatusOrderByCreatedAtAsc(
-                                ArenaMatchStatus.WAITING
-                        )
-                        .orElse(null);
+        LocalDateTime waitingCutoff =
+                LocalDateTime.now().minusMinutes(
+                        WAITING_EXPIRY_MINUTES
+                );
 
         /*
-         * If another player is waiting,
-         * join their match.
+         * Step 1: Cancel any stale WAITING matches
+         * created by this user (older than 5 min).
+         * Prevents orphan match accumulation.
          */
-        if (waitingMatch != null
-                && !waitingMatch.getPlayer1()
-                .getId()
-                .equals(user.getId())) {
+        arenaMatchRepository.cancelStaleWaitingMatchesForUser(
+                user,
+                ArenaMatchStatus.WAITING,
+                waitingCutoff
+        );
+
+        /*
+         * Step 2: Check if the user already has a
+         * fresh WAITING match. If so, reuse it
+         * instead of creating a duplicate.
+         */
+        java.util.Optional<ArenaMatch> ownMatch =
+                arenaMatchRepository.findUserOwnWaitingMatch(
+                        ArenaMatchStatus.WAITING,
+                        user,
+                        waitingCutoff
+                );
+
+        if (ownMatch.isPresent()) {
+            return toResponse(ownMatch.get());
+        }
+
+        /*
+         * Step 3: Look for another player's fresh
+         * WAITING match to join.
+         */
+        java.util.Optional<ArenaMatch> joinable =
+                arenaMatchRepository.findJoinableMatch(
+                        ArenaMatchStatus.WAITING,
+                        waitingCutoff,
+                        user
+                );
+
+        if (joinable.isPresent()) {
+            ArenaMatch waitingMatch = joinable.get();
 
             waitingMatch.setPlayer2(user);
 
@@ -81,7 +123,7 @@ public class ArenaService {
         }
 
         /*
-         * No suitable waiting match exists.
+         * Step 4: No suitable match exists.
          * Create a new one.
          */
         Word word =
@@ -512,6 +554,94 @@ public class ArenaService {
                 || status == ArenaMatchStatus.DRAW;
     }
 
+    @Transactional
+    public java.util.Optional<ArenaMatchResponse> findActiveMatch(User user) {
+
+        /*
+         * Clean up stale WAITING matches for this user
+         * before looking for active ones.
+         */
+        LocalDateTime waitingCutoff =
+                LocalDateTime.now().minusMinutes(
+                        WAITING_EXPIRY_MINUTES
+                );
+
+        arenaMatchRepository.cancelStaleWaitingMatchesForUser(
+                user,
+                ArenaMatchStatus.WAITING,
+                waitingCutoff
+        );
+
+        /*
+         * Use the broader cutoff for IN_PROGRESS
+         * (opponent may still be playing).
+         */
+        LocalDateTime activeCutoff =
+                LocalDateTime.now().minusMinutes(
+                        IN_PROGRESS_EXPIRY_MINUTES
+                );
+
+        return arenaMatchRepository.findActiveMatchesForUser(
+                user,
+                java.util.List.of(
+                        ArenaMatchStatus.WAITING,
+                        ArenaMatchStatus.IN_PROGRESS
+                ),
+                activeCutoff
+        ).stream().findFirst().map(this::toResponse);
+    }
+
+    @Transactional
+    public ArenaMatchResponse forfeitMatch(
+            Long matchId,
+            User user) {
+
+        ArenaMatch match =
+                getMatchForUser(matchId, user);
+
+        if (match.getStatus()
+                != ArenaMatchStatus.IN_PROGRESS) {
+
+            throw new IllegalStateException(
+                    "Only in-progress matches can be forfeited"
+            );
+        }
+
+        boolean isPlayer1 =
+                match.getPlayer1()
+                        .getId()
+                        .equals(user.getId());
+
+        /*
+         * The forfeiting player loses;
+         * the opponent wins.
+         */
+        match.setWinner(
+                isPlayer1
+                        ? ArenaWinner.PLAYER2
+                        : ArenaWinner.PLAYER1
+        );
+
+        match.setStatus(
+                isPlayer1
+                        ? ArenaMatchStatus.PLAYER2_WON
+                        : ArenaMatchStatus.PLAYER1_WON
+        );
+
+        match.setCompletedAt(
+                LocalDateTime.now()
+        );
+
+        if (!match.isRatingUpdated()) {
+            arenaRatingService.updateRatings(match);
+            match.setRatingUpdated(true);
+        }
+
+        arenaMatchRepository.save(match);
+
+        return toResponse(match);
+    }
+
     private ArenaMatchResponse toResponse(
             ArenaMatch match) {
 
@@ -540,4 +670,3 @@ public class ArenaService {
         );
     }
 }
-

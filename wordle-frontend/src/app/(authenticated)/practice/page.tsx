@@ -117,30 +117,33 @@ export default function PracticePage() {
 
   const renderStartScreen = () => (
     <div className="flex-1 flex flex-col items-center justify-center p-4">
-      <div className="card-brutal p-8 text-center max-w-md mx-auto flex flex-col items-center gap-6">
-        <div className="p-4 bg-pastel-blue rounded-full border-3 border-border shadow-brutal">
-          <Dumbbell className="w-16 h-16 text-border" strokeWidth={1.5} />
+      <div className="card-brutal p-8 text-center max-w-md mx-auto flex flex-col items-center gap-5 bg-surface border-3 border-border shadow-brutal">
+        <div className="p-4 bg-pastel-blue rounded-brutal border-3 border-border shadow-brutal-sm">
+          <Dumbbell className="w-12 h-12 text-border" strokeWidth={2} />
         </div>
         <div>
-          <h2 className="font-display font-bold text-3xl mb-2 text-border">
-            Practice Mode
+          <span className="text-xs font-display font-black tracking-widest text-border/70 uppercase px-3 py-0.5 bg-pastel-blue border-2 border-border rounded-sm shadow-[1px_1px_0px_#1A1A2E] inline-block mb-2">
+            PRACTICE MODE
+          </span>
+          <h2 className="font-display font-black text-3xl text-border tracking-tight">
+            Infinite Practice
           </h2>
-          <p className="font-body text-text-secondary text-lg">
-            Unlimited games to sharpen your skills
+          <p className="font-body text-text-secondary text-sm mt-1">
+            Unlimited games to sharpen your vocabulary and logic
           </p>
         </div>
         {error && (
-          <div className="flex items-center gap-2 text-red-600 bg-red-50 px-4 py-2 rounded-brutal border-2 border-red-600">
-            <AlertCircle size={20} />
-            <p className="font-body font-medium">{error}</p>
+          <div className="flex items-center gap-2 text-danger bg-pastel-pink px-4 py-2 rounded-brutal border-2 border-border font-body font-bold text-sm w-full text-center justify-center">
+            <AlertCircle size={18} />
+            <p>{error}</p>
           </div>
         )}
         <button
           onClick={handleStartGame}
           disabled={isLoading}
-          className="btn-brutal bg-primary text-border font-bold text-lg w-full py-4 mt-2"
+          className="btn-brutal bg-primary text-border font-bold text-base w-full py-3.5 mt-2"
         >
-          {isLoading ? "Starting practice..." : "New Game"}
+          {isLoading ? "Starting round..." : "New Game"}
         </button>
       </div>
     </div>
@@ -149,9 +152,9 @@ export default function PracticePage() {
   const renderGame = () => (
     <div className="flex-1 flex flex-col items-center w-full max-w-lg mx-auto gap-8 pt-4 pb-8">
       <div className="w-full flex justify-between items-center px-4">
-        <h1 className="font-display font-bold text-2xl flex items-center gap-3">
-          <div className="p-2 bg-pastel-blue rounded-brutal border-2 border-border shadow-[2px_2px_0px_rgba(26,26,46,1)]">
-            <Dumbbell size={20} />
+        <h1 className="font-display font-black text-xl flex items-center gap-2.5 text-border uppercase tracking-wide">
+          <div className="p-1.5 bg-pastel-blue rounded-md border-2 border-border shadow-[1px_1px_0px_#1A1A2E]">
+            <Dumbbell size={18} className="text-border" />
           </div>
           Practice Mode
         </h1>
@@ -168,14 +171,17 @@ export default function PracticePage() {
       </div>
 
       {status === "WON" || status === "LOST" || status === "ABANDONED" ? (
-        <div className="w-full px-4 w-full animate-bounce-in">
-          <div className="card-brutal p-6 text-center bg-surface">
+        <div className="relative w-full px-4">
+          <div className="card-brutal p-6 text-center bg-surface border-3 border-border shadow-brutal flex flex-col items-center">
             {status === "WON" && (
               <>
-                <h3 className="font-display font-bold text-2xl mb-2 text-correct">
-                  🎉 Well done!
+                <span className="px-3 py-1 rounded-sm bg-correct text-white border-2 border-border text-xs font-display font-black tracking-wider uppercase mb-3 shadow-[1px_1px_0px_#1A1A2E]">
+                  PUZZLE SOLVED
+                </span>
+                <h3 className="font-display font-black text-3xl text-border">
+                  Well done!
                 </h3>
-                <p className="font-body text-border mb-6">
+                <p className="font-body text-border/80 font-semibold text-sm mt-1 mb-6">
                   You solved it in {guesses.length}{" "}
                   {guesses.length === 1 ? "attempt" : "attempts"}.
                 </p>
@@ -183,37 +189,43 @@ export default function PracticePage() {
             )}
             {status === "LOST" && (
               <>
-                <h3 className="font-display font-bold text-2xl mb-2 text-absent">
+                <span className="px-3 py-1 rounded-sm bg-absent text-white border-2 border-border text-xs font-display font-black tracking-wider uppercase mb-3 shadow-[1px_1px_0px_#1A1A2E]">
+                  ROUND OVER
+                </span>
+                <h3 className="font-display font-black text-3xl text-border">
                   Better luck next time!
                 </h3>
-                <p className="font-body text-border mb-6">
-                  Keep practicing to improve your skills.
+                <p className="font-body text-border/80 font-semibold text-sm mt-1 mb-6">
+                  Keep practicing to sharpen your strategy.
                 </p>
               </>
             )}
             {status === "ABANDONED" && (
               <>
-                <h3 className="font-display font-bold text-2xl mb-2 text-border">
-                  Game Abandoned
+                <span className="px-3 py-1 rounded-sm bg-pastel-pink text-border border-2 border-border text-xs font-display font-black tracking-wider uppercase mb-3 shadow-[1px_1px_0px_#1A1A2E]">
+                  SESSION ABANDONED
+                </span>
+                <h3 className="font-display font-black text-3xl text-border">
+                  Game Ended
                 </h3>
-                <p className="font-body text-border mb-6">
-                  You ended this practice session.
+                <p className="font-body text-border/80 font-semibold text-sm mt-1 mb-6">
+                  You ended this practice session early.
                 </p>
               </>
             )}
 
-            <div className="flex flex-col gap-3">
+            <div className="flex gap-4 w-full justify-center">
               <button
                 onClick={handlePlayAgain}
-                className="btn-brutal py-2 bg-primary text-border font-bold"
+                className="btn-brutal px-6 py-2.5 bg-primary text-border font-bold text-sm"
               >
                 Play Again
               </button>
               <button
                 onClick={() => router.push("/")}
-                className="btn-brutal py-2 bg-surface text-border font-bold"
+                className="btn-brutal px-6 py-2.5 bg-surface text-border font-bold text-sm"
               >
-                Back Home
+                Dashboard
               </button>
             </div>
           </div>

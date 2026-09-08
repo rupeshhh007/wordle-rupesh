@@ -8,6 +8,8 @@ import type {
   MyLeaderboardResponse,
 } from "@/types/api";
 import { Trophy, Medal, Crown } from "lucide-react";
+import { LoadingState } from "@/components/ui/LoadingState";
+import { Avatar } from "@/components/ui/Avatar";
 
 export default function LeaderboardPage() {
   const user = useAuthStore((s) => s.user);
@@ -27,20 +29,14 @@ export default function LeaderboardPage() {
   }, []);
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <p className="font-display text-text-secondary animate-pulse">
-          Loading rankings...
-        </p>
-      </div>
-    );
+    return <LoadingState message="Loading rankings..." />;
   }
 
   if (error) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="card-brutal p-6 text-center bg-pastel-pink">
-          <p className="font-display font-bold">{error}</p>
+        <div className="card-brutal p-6 text-center bg-pastel-pink border-3 border-border shadow-brutal">
+          <p className="font-display font-bold text-danger">{error}</p>
         </div>
       </div>
     );
@@ -48,14 +44,16 @@ export default function LeaderboardPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="font-display font-bold text-3xl flex items-center gap-3">
-        <Trophy className="w-8 h-8" />
+      <h1 className="font-display font-black text-3xl sm:text-4xl flex items-center gap-3 text-border uppercase tracking-wide">
+        <div className="p-2 bg-pastel-yellow rounded-brutal border-2 border-border shadow-brutal-sm">
+          <Trophy className="w-6 h-6 text-border" />
+        </div>
         Leaderboard
       </h1>
 
       {/* My Rank Card */}
       {myRank && (
-        <div className="card-brutal p-5 bg-pastel-yellow">
+        <div className="card-brutal card-interactive p-5 bg-pastel-yellow">
           <div className="flex items-center justify-between">
             <div>
               <p className="font-display text-sm text-text-secondary uppercase font-semibold">
@@ -109,10 +107,11 @@ export default function LeaderboardPage() {
                       <RankDisplay rank={entry.rank} />
                     </td>
                     <td className="px-4 py-3">
-                      <span className="font-display font-semibold">
+                      <span className="font-display font-semibold inline-flex items-center gap-2">
+                        <Avatar username={entry.username} size="sm" />
                         {entry.username}
                         {isMe && (
-                          <span className="ml-2 text-xs bg-primary text-border px-2 py-0.5 rounded-full border border-border font-bold">
+                          <span className="ml-1 text-xs bg-primary text-border px-2 py-0.5 rounded-full border border-border font-bold">
                             YOU
                           </span>
                         )}
@@ -143,8 +142,14 @@ export default function LeaderboardPage() {
               >
                 <div className="flex items-center gap-3">
                   <RankDisplay rank={entry.rank} />
+                  <Avatar username={entry.username} size="sm" />
                   <span className="font-display font-semibold">
                     {entry.username}
+                    {isMe && (
+                      <span className="ml-1 text-xs bg-primary text-border px-2 py-0.5 rounded-full border border-border font-bold">
+                        YOU
+                      </span>
+                    )}
                   </span>
                 </div>
                 <span className="font-display font-black text-lg">
