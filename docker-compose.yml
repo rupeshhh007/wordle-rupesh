@@ -1,0 +1,56 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: wordle-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: wordle_arena
+      POSTGRES_USER: wordle_user
+      POSTGRES_PASSWORD: wordle_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U wordle_user -d wordle_arena"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./wordle-arena
+      dockerfile: Dockerfile
+    container_name: wordle-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/wordle_arena
+      SPRING_DATASOURCE_USERNAME: wordle_user
+      SPRING_DATASOURCE_PASSWORD: wordle_password
+      JWT_SECRET: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
+      JWT_EXPIRATION: "86400000"
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_JPA_SHOW_SQL: "false"
+    ports:
+      - "8080:8080"
+
+  frontend:
+    build:
+      context: ./wordle-frontend
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_BASE_URL: http://localhost:8080
+    container_name: wordle-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: http://localhost:8080
+    ports:
+      - "3000:3000"
+
+volumes:
+  postgres_data:

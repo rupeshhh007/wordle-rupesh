@@ -44,6 +44,17 @@ function getMyResult(
   return null;
 }
 
+/**
+ * Safely parse date from server, ensuring it is parsed as UTC even if
+ * the backend omitted the 'Z' timezone indicator (e.g. from LocalDateTime).
+ */
+function parseUtcDate(dateStr: string | null | undefined): number {
+  if (!dateStr) return Date.now();
+  const normalized = /[Z+-]/.test(dateStr.slice(10)) ? dateStr : `${dateStr}Z`;
+  const parsed = new Date(normalized).getTime();
+  return isNaN(parsed) ? Date.now() : parsed;
+}
+
 export default function ArenaMatchPage({
   params,
 }: {
@@ -72,7 +83,7 @@ export default function ArenaMatchPage({
   const [updatedRating, setUpdatedRating] = useState<number | null>(null);
   const [isCancelling, setIsCancelling] = useState(false);
   const [isForfeiting, setIsForfeiting] = useState(false);
-  const [waitingElapsed, setWaitingElapsed] = useState(0);
+  const [remainingSeconds, setRemainingSeconds] = useState(WAITING_TIMEOUT_SECONDS);
 
   const mounted = useRef(true);
   const pollInterval = useRef<NodeJS.Timeout | null>(null);
@@ -258,25 +269,22 @@ export default function ArenaMatchPage({
   // WAITING timeout countdown
   useEffect(() => {
     if (match?.status === "WAITING") {
-      // Calculate elapsed time from match creation
-      const createdAt = new Date(match.createdAt).getTime();
+      const createdAtMs = parseUtcDate(match.createdAt);
       const now = Date.now();
-      const initialElapsed = Math.floor((now - createdAt) / 1000);
-      setWaitingElapsed(Math.max(0, initialElapsed));
+      const elapsedSec = Math.max(0, Math.floor((now - createdAtMs) / 1000));
 
-      // If already expired, auto-cancel
-      if (initialElapsed >= WAITING_TIMEOUT_SECONDS) {
-        handleCancelMatch();
-        return;
-      }
+      // Calculate initial remaining seconds; keep at least 30s so user is never instantly ejected
+      const initialRemaining = Math.max(30, WAITING_TIMEOUT_SECONDS - elapsedSec);
+      setRemainingSeconds(initialRemaining);
 
       waitingTimer.current = setInterval(() => {
-        setWaitingElapsed((prev) => {
-          const next = prev + 1;
-          if (next >= WAITING_TIMEOUT_SECONDS) {
+        setRemainingSeconds((prev) => {
+          if (prev <= 1) {
+            if (waitingTimer.current) clearInterval(waitingTimer.current);
             handleCancelMatch();
+            return 0;
           }
-          return next;
+          return prev - 1;
         });
       }, 1000);
     } else {
@@ -405,9 +413,8 @@ export default function ArenaMatchPage({
   }
 
   if (match?.status === "WAITING") {
-    const remaining = Math.max(0, WAITING_TIMEOUT_SECONDS - waitingElapsed);
-    const minutes = Math.floor(remaining / 60);
-    const seconds = remaining % 60;
+    const minutes = Math.floor(remainingSeconds / 60);
+    const seconds = remainingSeconds % 60;
 
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh]">
