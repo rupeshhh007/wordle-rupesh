@@ -64,7 +64,7 @@ public interface WordRepository extends JpaRepository<Word, Long> {
                     FROM words
                     WHERE active = true
                       AND answer_eligible = true
-                    ORDER BY id
+                    ORDER BY word ASC
                     """,
             nativeQuery = true
     )

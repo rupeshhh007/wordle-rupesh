@@ -31,6 +31,7 @@ public class DailyService {
     public Game getOrCreateDailyGame(User user) {
 
         LocalDate today = LocalDate.now();
+        Word dailyWord = getDailyWord(today);
 
         /*
          * If the user already has a Daily game today,
@@ -42,12 +43,24 @@ public class DailyService {
                         GameType.DAILY,
                         today
                 )
-                .orElseGet(() -> createDailyGame(user, today));
+                .map(existingGame -> {
+                    /*
+                     * If the game has not been played yet (0 attempts) and is in progress,
+                     * ensure it points to the canonical daily word for today (in case of answer pool updates).
+                     */
+                    if (existingGame.getStatus() == GameStatus.IN_PROGRESS
+                            && existingGame.getAttemptCount() == 0
+                            && existingGame.getWord() != null
+                            && !existingGame.getWord().getId().equals(dailyWord.getId())) {
+                        existingGame.setWord(dailyWord);
+                        return gameRepository.save(existingGame);
+                    }
+                    return existingGame;
+                })
+                .orElseGet(() -> createDailyGame(user, today, dailyWord));
     }
 
-    private Game createDailyGame(
-            User user,
-            LocalDate date) {
+    public Word getDailyWord(LocalDate date) {
 
         List<Word> answerPool =
                 wordRepository.findAllAnswerEligibleWords();
@@ -61,14 +74,20 @@ public class DailyService {
         /*
          * Deterministic word selection.
          *
-         * The same date always produces the same index.
+         * The same date always produces the exact same index.
          */
         int index = Math.floorMod(
                 date.toEpochDay(),
                 answerPool.size()
         );
 
-        Word dailyWord = answerPool.get(index);
+        return answerPool.get(index);
+    }
+
+    private Game createDailyGame(
+            User user,
+            LocalDate date,
+            Word dailyWord) {
 
         Game game = new Game();
 
