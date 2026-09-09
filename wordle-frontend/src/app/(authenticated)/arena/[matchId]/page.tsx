@@ -65,6 +65,7 @@ export default function ArenaMatchPage({
   const matchIdNum = parseInt(matchId, 10);
 
   const user = useAuthStore((s) => s.user);
+  const setUser = useAuthStore((s) => s.setUser);
   const username = user?.username;
 
   const [match, setMatch] = useState<ArenaMatchResponse | null>(null);
@@ -154,7 +155,19 @@ export default function ArenaMatchPage({
       const me = await getMe();
       if (mounted.current) {
         setUpdatedRating(me.rating);
+        setUser(me);
       }
+      setTimeout(async () => {
+        try {
+          const freshMe = await getMe();
+          if (mounted.current) {
+            setUpdatedRating(freshMe.rating);
+            setUser(freshMe);
+          }
+        } catch {
+          // ignore
+        }
+      }, 1000);
     } catch {
       // ignore
     }

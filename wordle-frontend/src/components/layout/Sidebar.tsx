@@ -1,10 +1,12 @@
 'use client';
 
+import { useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Home, Calendar, Dumbbell, Swords, BarChart3, Trophy, Clock, LogOut } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
 import { Avatar } from '@/components/ui/Avatar';
+import { getMe } from '@/lib/api/users';
 
 const PLAY_LINKS = [
   { href: '/', label: 'Dashboard', icon: Home },
@@ -22,7 +24,17 @@ const TRACK_LINKS = [
 export default function Sidebar() {
   const pathname = usePathname();
   const user = useAuthStore((s) => s.user);
+  const setUser = useAuthStore((s) => s.setUser);
+  const token = useAuthStore((s) => s.token);
   const logout = useAuthStore((s) => s.logout);
+
+  // Keep user profile (especially rating) continuously synchronized
+  useEffect(() => {
+    if (!token) return;
+    getMe()
+      .then((freshUser) => setUser(freshUser))
+      .catch(() => {});
+  }, [pathname, token, setUser]);
 
   return (
     <aside className="hidden lg:flex w-64 h-full flex-col bg-surface border-r-3 border-border">

@@ -4,12 +4,15 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Swords, Loader2, Eye } from 'lucide-react';
 import { findMatch, getActiveMatch, getLiveMatches } from '@/lib/api/arena';
+import { getMe } from '@/lib/api/users';
+import { useAuthStore } from '@/stores/auth-store';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { Avatar } from '@/components/ui/Avatar';
 import type { ArenaMatchResponse } from '@/types/api';
 
 export default function ArenaLobbyPage() {
   const router = useRouter();
+  const setUser = useAuthStore((s) => s.setUser);
   const [isCheckingActive, setIsCheckingActive] = useState(true);
   const [isSearching, setIsSearching] = useState(false);
   const [liveMatches, setLiveMatches] = useState<ArenaMatchResponse[]>([]);
@@ -51,11 +54,23 @@ export default function ArenaLobbyPage() {
       }
     }
 
+    async function refreshUser() {
+      try {
+        const me = await getMe();
+        if (mounted.current) {
+          setUser(me);
+        }
+      } catch {
+        // ignore
+      }
+    }
+
     // Clear any stale localStorage on lobby load
     if (typeof window !== 'undefined') {
       localStorage.removeItem('wordle_active_arena_match');
     }
 
+    refreshUser();
     checkActiveMatch();
     loadLiveMatches();
 
