@@ -28,6 +28,7 @@ public interface ArenaMatchRepository
     @Query("""
         SELECT m FROM ArenaMatch m
         WHERE m.status = :status
+          AND m.isPrivate = false
           AND m.createdAt > :cutoff
           AND m.player1 <> :user
         ORDER BY m.createdAt ASC
@@ -47,6 +48,7 @@ public interface ArenaMatchRepository
     @Query("""
         SELECT m FROM ArenaMatch m
         WHERE m.status = :status
+          AND m.isPrivate = false
           AND m.player1 = :user
           AND m.createdAt > :cutoff
         ORDER BY m.createdAt DESC
@@ -93,6 +95,7 @@ public interface ArenaMatchRepository
     @Query("""
         SELECT m FROM ArenaMatch m
         WHERE m.status = :status
+          AND m.isPrivate = false
           AND m.startedAt > :cutoff
         ORDER BY m.startedAt DESC
     """)
@@ -100,6 +103,21 @@ public interface ArenaMatchRepository
             @Param("status") ArenaMatchStatus status,
             @Param("cutoff") LocalDateTime cutoff
     );
+
+    Optional<ArenaMatch> findByInviteCode(String inviteCode);
+
+    boolean existsByInviteCode(String inviteCode);
+
+    @Modifying
+    @Query("""
+        UPDATE ArenaMatch m
+        SET m.status = 'CANCELLED',
+            m.completedAt = CURRENT_TIMESTAMP
+        WHERE m.player1 = :user
+          AND m.status = 'WAITING'
+          AND m.isPrivate = true
+    """)
+    int cancelWaitingPrivateMatchesForUser(@Param("user") User user);
 
     /**
      * Find all non-WAITING arena matches for a user (for game history).

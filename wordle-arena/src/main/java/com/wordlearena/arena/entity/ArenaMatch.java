@@ -65,6 +65,12 @@ public class ArenaMatch {
     @Column(nullable = false)
     private boolean ratingUpdated = false;
 
+    @Column(nullable = false, columnDefinition = "boolean default false")
+    private boolean isPrivate = false;
+
+    @Column(length = 16)
+    private String inviteCode;
+
     @Version
     private Long version;
 
@@ -161,6 +167,22 @@ public class ArenaMatch {
 
     public void setRatingUpdated(boolean ratingUpdated) {
         this.ratingUpdated = ratingUpdated;
+    }
+
+    public boolean isPrivate() {
+        return isPrivate;
+    }
+
+    public void setPrivate(boolean aPrivate) {
+        isPrivate = aPrivate;
+    }
+
+    public String getInviteCode() {
+        return inviteCode;
+    }
+
+    public void setInviteCode(String inviteCode) {
+        this.inviteCode = inviteCode;
     }
 
     public Long getVersion() {

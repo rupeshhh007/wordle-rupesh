@@ -100,6 +100,8 @@ export interface ArenaMatchResponse {
   createdAt: string;
   startedAt: string | null;
   completedAt: string | null;
+  isPrivate?: boolean;
+  inviteCode?: string;
 }
 
 export interface ArenaMatchDetailsResponse {

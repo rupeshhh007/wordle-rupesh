@@ -17,6 +17,8 @@ public class ArenaMatchResponse {
     private LocalDateTime createdAt;
     private LocalDateTime startedAt;
     private LocalDateTime completedAt;
+    private boolean isPrivate;
+    private String inviteCode;
 
     public ArenaMatchResponse(
             Long id,
@@ -30,6 +32,23 @@ public class ArenaMatchResponse {
             LocalDateTime startedAt,
             LocalDateTime completedAt
     ) {
+        this(id, player1, player2, status, winner, player1Attempts, player2Attempts, createdAt, startedAt, completedAt, false, null);
+    }
+
+    public ArenaMatchResponse(
+            Long id,
+            String player1,
+            String player2,
+            ArenaMatchStatus status,
+            ArenaWinner winner,
+            int player1Attempts,
+            int player2Attempts,
+            LocalDateTime createdAt,
+            LocalDateTime startedAt,
+            LocalDateTime completedAt,
+            boolean isPrivate,
+            String inviteCode
+    ) {
         this.id = id;
         this.player1 = player1;
         this.player2 = player2;
@@ -40,6 +59,8 @@ public class ArenaMatchResponse {
         this.createdAt = createdAt;
         this.startedAt = startedAt;
         this.completedAt = completedAt;
+        this.isPrivate = isPrivate;
+        this.inviteCode = inviteCode;
     }
 
     public Long getId() {
@@ -80,5 +101,13 @@ public class ArenaMatchResponse {
 
     public LocalDateTime getCompletedAt() {
         return completedAt;
+    }
+
+    public boolean isPrivate() {
+        return isPrivate;
+    }
+
+    public String getInviteCode() {
+        return inviteCode;
     }
 }

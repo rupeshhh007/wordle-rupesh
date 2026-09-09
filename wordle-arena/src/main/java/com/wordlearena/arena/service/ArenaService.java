@@ -20,6 +20,7 @@ import com.wordlearena.user.entity.User;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -33,10 +34,18 @@ public class ArenaService {
     private static final int WAITING_EXPIRY_MINUTES = 5;
 
     /**
+     * Private lobby WAITING matches older than this are considered expired.
+     */
+    private static final int PRIVATE_LOBBY_EXPIRY_MINUTES = 15;
+
+    /**
      * IN_PROGRESS matches older than this are considered
      * abandoned. Used for active-match queries.
      */
     private static final int IN_PROGRESS_EXPIRY_MINUTES = 30;
+
+    private static final String INVITE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    private static final SecureRandom RANDOM = new SecureRandom();
 
     private final ArenaMatchRepository arenaMatchRepository;
     private final ArenaGuessRepository arenaGuessRepository;
@@ -676,31 +685,110 @@ public class ArenaService {
         return toResponse(match);
     }
 
+    @Transactional
+    public ArenaMatchResponse createPrivateMatch(User user) {
+        // Cancel any existing WAITING private matches created by this user
+        arenaMatchRepository.cancelWaitingPrivateMatchesForUser(user);
+
+        Word word = wordRepository
+                .findRandomAnswerEligibleWord()
+                .orElseThrow(() -> new IllegalStateException("No answer-eligible words available"));
+
+        String inviteCode = generateUniqueInviteCode();
+
+        ArenaMatch match = new ArenaMatch();
+        match.setPlayer1(user);
+        match.setWord(word);
+        match.setStatus(ArenaMatchStatus.WAITING);
+        match.setWinner(null);
+        match.setPlayer1Attempts(0);
+        match.setPlayer2Attempts(0);
+        match.setRatingUpdated(false);
+        match.setCreatedAt(LocalDateTime.now());
+        match.setPrivate(true);
+        match.setInviteCode(inviteCode);
+
+        arenaMatchRepository.save(match);
+        return toResponse(match);
+    }
+
+    @Transactional
+    public ArenaMatchResponse joinPrivateMatch(String inviteCode, User user) {
+        if (inviteCode == null || inviteCode.trim().isEmpty()) {
+            throw new IllegalArgumentException("Invite code cannot be blank");
+        }
+
+        String normalizedCode = inviteCode.trim().toUpperCase();
+
+        ArenaMatch match = arenaMatchRepository
+                .findByInviteCode(normalizedCode)
+                .orElseThrow(() -> new IllegalArgumentException("Invalid room code. Room not found."));
+
+        // If the host joins their own room, return it cleanly
+        if (match.getPlayer1().getId().equals(user.getId())) {
+            return toResponse(match);
+        }
+
+        if (match.getStatus() == ArenaMatchStatus.CANCELLED) {
+            throw new IllegalStateException("This private room was cancelled by the host.");
+        }
+
+        if (match.getStatus() != ArenaMatchStatus.WAITING) {
+            // Check if this user is already player2
+            if (match.getPlayer2() != null && match.getPlayer2().getId().equals(user.getId())) {
+                return toResponse(match);
+            }
+            throw new IllegalStateException("This private match has already started or concluded.");
+        }
+
+        // Check if the match has expired (> 15 minutes)
+        if (match.getCreatedAt().isBefore(LocalDateTime.now().minusMinutes(PRIVATE_LOBBY_EXPIRY_MINUTES))) {
+            match.setStatus(ArenaMatchStatus.CANCELLED);
+            match.setCompletedAt(LocalDateTime.now());
+            arenaMatchRepository.save(match);
+            throw new IllegalStateException("This room code has expired. Please ask the host for a new invite.");
+        }
+
+        match.setPlayer2(user);
+        match.setStatus(ArenaMatchStatus.IN_PROGRESS);
+        match.setStartedAt(LocalDateTime.now());
+
+        arenaMatchRepository.save(match);
+        return toResponse(match);
+    }
+
+    private String generateUniqueInviteCode() {
+        for (int attempt = 0; attempt < 10; attempt++) {
+            StringBuilder sb = new StringBuilder(6);
+            for (int i = 0; i < 6; i++) {
+                sb.append(INVITE_CHARS.charAt(RANDOM.nextInt(INVITE_CHARS.length())));
+            }
+            String code = sb.toString();
+            if (!arenaMatchRepository.existsByInviteCode(code)) {
+                return code;
+            }
+        }
+        throw new IllegalStateException("Failed to generate unique invite code");
+    }
+
     private ArenaMatchResponse toResponse(
             ArenaMatch match) {
 
         return new ArenaMatchResponse(
                 match.getId(),
-
                 match.getPlayer1().getUsername(),
-
                 match.getPlayer2() == null
                         ? null
                         : match.getPlayer2().getUsername(),
-
                 match.getStatus(),
-
                 match.getWinner(),
-
                 match.getPlayer1Attempts(),
-
                 match.getPlayer2Attempts(),
-
                 match.getCreatedAt(),
-
                 match.getStartedAt(),
-
-                match.getCompletedAt()
+                match.getCompletedAt(),
+                match.isPrivate(),
+                match.getInviteCode()
         );
     }
 }

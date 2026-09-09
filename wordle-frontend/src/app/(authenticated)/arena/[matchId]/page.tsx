@@ -25,7 +25,7 @@ import { useGameInput } from "@/hooks/useGameInput";
 import { useAuthStore } from "@/stores/auth-store";
 import { LoadingState } from "@/components/ui/LoadingState";
 import { Avatar } from "@/components/ui/Avatar";
-import { Flag, Eye, ArrowLeft } from "lucide-react";
+import { Flag, Eye, ArrowLeft, Copy, Check, Link2 } from "lucide-react";
 
 /** Max seconds to wait in WAITING state before auto-cancelling. */
 const WAITING_TIMEOUT_SECONDS = 180;
@@ -94,6 +94,31 @@ export default function ArenaMatchPage({
     updatedRating !== null && initialRatingRef.current !== null
       ? updatedRating - initialRatingRef.current
       : null;
+
+  const [copiedCode, setCopiedCode] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
+
+  useEffect(() => {
+    if (match?.isPrivate && match?.status === "WAITING") {
+      setRemainingSeconds((prev) => (prev <= WAITING_TIMEOUT_SECONDS ? 600 : prev));
+    }
+  }, [match?.isPrivate, match?.status]);
+
+  const handleCopyCode = () => {
+    if (!match?.inviteCode) return;
+    navigator.clipboard.writeText(match.inviteCode);
+    setCopiedCode(true);
+    setTimeout(() => setCopiedCode(false), 2000);
+  };
+
+  const handleCopyLink = () => {
+    if (!match?.inviteCode || typeof window === "undefined") return;
+    const url = `${window.location.origin}/arena?code=${match.inviteCode}`;
+    navigator.clipboard.writeText(url);
+    setCopiedLink(true);
+    setTimeout(() => setCopiedLink(false), 2000);
+  };
+
   const [isCancelling, setIsCancelling] = useState(false);
   const [isForfeiting, setIsForfeiting] = useState(false);
   const [remainingSeconds, setRemainingSeconds] = useState(WAITING_TIMEOUT_SECONDS);
@@ -516,6 +541,78 @@ export default function ArenaMatchPage({
 
     const minutes = Math.floor(remainingSeconds / 60);
     const seconds = remainingSeconds % 60;
+
+    if (match.isPrivate) {
+      return (
+        <div className="flex flex-col items-center justify-center min-h-[60vh] py-8">
+          <div className="card-brutal p-8 text-center max-w-lg mx-auto w-full border-3 border-border shadow-brutal bg-surface flex flex-col items-center">
+            <span className="text-xs font-display font-black tracking-widest text-border/70 uppercase px-3 py-0.5 bg-pastel-purple border-2 border-border rounded-sm shadow-[1px_1px_0px_#1A1A2E] mb-3">
+              PRIVATE DUEL LOBBY
+            </span>
+            <h2 className="font-display font-black text-2xl sm:text-3xl text-border tracking-tight mb-1">
+              Waiting for Your Friend
+            </h2>
+            <p className="text-border/60 mb-6 font-display font-bold text-xs uppercase tracking-wider">
+              Host: {match.player1} &bull; Room #{match.id}
+            </p>
+
+            {/* Room Code Showcase Box */}
+            <div className="w-full p-5 mb-4 bg-pastel-purple/20 rounded-brutal border-3 border-border text-center shadow-brutal-sm">
+              <span className="text-[11px] font-display font-black tracking-widest uppercase text-border/70 block mb-1">
+                ROOM INVITE CODE
+              </span>
+              <div className="font-display font-black text-3xl sm:text-4xl text-border tracking-[0.25em] select-all py-1">
+                {match.inviteCode}
+              </div>
+              <p className="font-body text-xs text-border/70 mt-1 font-medium">
+                Share this 6-letter code or invite link with your friend
+              </p>
+            </div>
+
+            {/* Copy Actions */}
+            <div className="grid grid-cols-2 gap-3 w-full mb-6">
+              <button
+                type="button"
+                onClick={handleCopyCode}
+                className="btn-brutal bg-surface px-4 py-2.5 font-bold text-xs text-border flex items-center justify-center gap-2 shadow-brutal-sm hover:bg-bg"
+              >
+                {copiedCode ? <Check className="w-4 h-4 text-correct" /> : <Copy className="w-4 h-4" />}
+                {copiedCode ? "Code Copied!" : "Copy Code"}
+              </button>
+              <button
+                type="button"
+                onClick={handleCopyLink}
+                className="btn-brutal bg-primary px-4 py-2.5 font-bold text-xs text-border flex items-center justify-center gap-2 shadow-brutal-sm hover:brightness-105"
+              >
+                {copiedLink ? <Check className="w-4 h-4 text-correct" /> : <Link2 className="w-4 h-4" />}
+                {copiedLink ? "Link Copied!" : "Copy Link"}
+              </button>
+            </div>
+
+            {/* Pulsing indicator */}
+            <div className="flex items-center justify-center gap-2 mb-6 text-xs font-display font-bold text-border/80">
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-correct opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-correct"></span>
+              </span>
+              Waiting for friend to join... Duel starts automatically!
+            </div>
+
+            <div className="text-xs font-body text-text-secondary mb-4">
+              Room closes in {minutes}:{seconds.toString().padStart(2, '0')}
+            </div>
+
+            <button
+              onClick={handleCancelMatch}
+              disabled={isCancelling}
+              className="btn-brutal bg-pastel-pink px-8 py-2.5 w-full font-bold text-border text-xs disabled:opacity-70"
+            >
+              {isCancelling ? "Cancelling..." : "Cancel Room"}
+            </button>
+          </div>
+        </div>
+      );
+    }
 
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh]">

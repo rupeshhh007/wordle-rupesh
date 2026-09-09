@@ -47,3 +47,12 @@ export function forfeitMatch(matchId: number): Promise<ArenaMatchResponse> {
 export function getLiveMatches(): Promise<ArenaMatchResponse[]> {
   return get<ArenaMatchResponse[]>("/api/arena/live");
 }
+
+export function createPrivateMatch(): Promise<ArenaMatchResponse> {
+  return post<ArenaMatchResponse>("/api/arena/private");
+}
+
+export function joinPrivateMatch(inviteCode: string): Promise<ArenaMatchResponse> {
+  return post<ArenaMatchResponse>("/api/arena/join-private", { inviteCode });
+}
+

@@ -2,8 +2,14 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Swords, Loader2, Eye } from 'lucide-react';
-import { findMatch, getActiveMatch, getLiveMatches } from '@/lib/api/arena';
+import { Swords, Loader2, Eye, UserPlus } from 'lucide-react';
+import {
+  findMatch,
+  getActiveMatch,
+  getLiveMatches,
+  createPrivateMatch,
+  joinPrivateMatch,
+} from '@/lib/api/arena';
 import { getMe } from '@/lib/api/users';
 import { useAuthStore } from '@/stores/auth-store';
 import { LoadingState } from '@/components/ui/LoadingState';
@@ -15,12 +21,26 @@ export default function ArenaLobbyPage() {
   const setUser = useAuthStore((s) => s.setUser);
   const [isCheckingActive, setIsCheckingActive] = useState(true);
   const [isSearching, setIsSearching] = useState(false);
+  const [isCreatingPrivate, setIsCreatingPrivate] = useState(false);
+  const [isJoiningPrivate, setIsJoiningPrivate] = useState(false);
+  const [inviteCodeInput, setInviteCodeInput] = useState('');
+  const [hasInviteFromUrl, setHasInviteFromUrl] = useState(false);
   const [liveMatches, setLiveMatches] = useState<ArenaMatchResponse[]>([]);
   const [error, setError] = useState<string | null>(null);
   const mounted = useRef(true);
 
   useEffect(() => {
     mounted.current = true;
+
+    // Check for room invite code in URL
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const code = params.get('code') || params.get('join');
+      if (code) {
+        setInviteCodeInput(code.toUpperCase().trim());
+        setHasInviteFromUrl(true);
+      }
+    }
 
     async function checkActiveMatch() {
       try {
@@ -84,7 +104,7 @@ export default function ArenaLobbyPage() {
   }, [router]);
 
   const handleFindMatch = async () => {
-    if (isSearching) return;
+    if (isSearching || isCreatingPrivate || isJoiningPrivate) return;
     try {
       setIsSearching(true);
       setError(null);
@@ -97,6 +117,48 @@ export default function ArenaLobbyPage() {
       if (mounted.current) {
         setIsSearching(false);
         setError(err.message || 'Failed to find match');
+      }
+    }
+  };
+
+  const handleCreatePrivateMatch = async () => {
+    if (isCreatingPrivate || isSearching || isJoiningPrivate) return;
+    try {
+      setIsCreatingPrivate(true);
+      setError(null);
+      const response = await createPrivateMatch();
+
+      if (!mounted.current) return;
+
+      router.push(`/arena/${response.id}`);
+    } catch (err: any) {
+      if (mounted.current) {
+        setIsCreatingPrivate(false);
+        setError(err.message || 'Failed to create private room');
+      }
+    }
+  };
+
+  const handleJoinPrivateMatch = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const code = inviteCodeInput.trim().toUpperCase();
+    if (!code) {
+      setError('Please enter a 6-character room code');
+      return;
+    }
+    if (isJoiningPrivate || isSearching || isCreatingPrivate) return;
+    try {
+      setIsJoiningPrivate(true);
+      setError(null);
+      const response = await joinPrivateMatch(code);
+
+      if (!mounted.current) return;
+
+      router.push(`/arena/${response.id}`);
+    } catch (err: any) {
+      if (mounted.current) {
+        setIsJoiningPrivate(false);
+        setError(err.message || 'Failed to join private room');
       }
     }
   };
@@ -119,44 +181,117 @@ export default function ArenaLobbyPage() {
       </div>
 
       {error && (
-        <div className="w-full max-w-lg mb-6 p-4 rounded-brutal border-3 border-border shadow-brutal bg-pastel-pink text-border font-bold text-center text-sm">
+        <div className="w-full max-w-2xl mb-6 p-4 rounded-brutal border-3 border-border shadow-brutal bg-pastel-pink text-border font-bold text-center text-sm">
           {error}
         </div>
       )}
 
-      <div className="card-brutal p-8 text-center max-w-lg mx-auto w-full bg-surface border-3 border-border shadow-brutal flex flex-col items-center">
-        <div className="p-5 bg-pastel-pink rounded-brutal border-3 border-border shadow-brutal-sm mb-6">
-          <Swords className="w-14 h-14 text-border" strokeWidth={2} />
+      {/* Duel Options: Public Queue & Play with Friend */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-4xl mb-12">
+        {/* Card 1: Quick Match (Public Matchmaking) */}
+        <div className="card-brutal p-6 text-center bg-surface border-3 border-border shadow-brutal flex flex-col items-center justify-between">
+          <div className="flex flex-col items-center w-full">
+            <div className="p-4 bg-pastel-pink rounded-brutal border-3 border-border shadow-brutal-sm mb-4">
+              <Swords className="w-10 h-10 text-border" strokeWidth={2} />
+            </div>
+            <span className="text-xs font-display font-black tracking-widest text-border/70 uppercase px-3 py-0.5 bg-pastel-pink border-2 border-border rounded-sm shadow-[1px_1px_0px_#1A1A2E] mb-2">
+              PUBLIC QUEUE
+            </span>
+            <h2 className="font-display font-black text-2xl mb-2 text-border tracking-tight">
+              Quick Match
+            </h2>
+            <p className="mb-6 font-body text-border/70 text-xs font-medium max-w-xs">
+              Jump into the matchmaking queue to face a random opponent in real time. Winner earns rating points.
+            </p>
+          </div>
+
+          <button
+            onClick={handleFindMatch}
+            disabled={isSearching || isCreatingPrivate || isJoiningPrivate}
+            className="btn-brutal bg-primary px-6 py-3 w-full font-bold flex items-center justify-center gap-2 text-border text-sm shadow-brutal-sm disabled:opacity-70 disabled:cursor-not-allowed"
+          >
+            {isSearching ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Searching for opponent...
+              </>
+            ) : (
+              'Find Public Match'
+            )}
+          </button>
         </div>
 
-        <span className="text-xs font-display font-black tracking-widest text-border/70 uppercase px-3 py-0.5 bg-pastel-pink border-2 border-border rounded-sm shadow-[1px_1px_0px_#1A1A2E] mb-2">
-          1V1 RANKED DUEL
-        </span>
-        <h2 className="font-display font-black text-3xl mb-1 text-border tracking-tight">
-          Competitive Match
-        </h2>
-        <p className="mb-8 font-body text-border/70 text-sm max-w-sm font-medium">
-          Face off against an opponent in real time. First player to find the target word wins the match and earns rating points.
-        </p>
+        {/* Card 2: Play with Friend (Private Room) */}
+        <div className={`card-brutal p-6 text-center bg-surface border-3 border-border shadow-brutal flex flex-col items-center justify-between ${hasInviteFromUrl ? 'ring-4 ring-primary' : ''}`}>
+          <div className="flex flex-col items-center w-full">
+            <div className="p-4 bg-pastel-purple rounded-brutal border-3 border-border shadow-brutal-sm mb-4">
+              <UserPlus className="w-10 h-10 text-border" strokeWidth={2} />
+            </div>
+            <span className="text-xs font-display font-black tracking-widest text-border/70 uppercase px-3 py-0.5 bg-pastel-purple border-2 border-border rounded-sm shadow-[1px_1px_0px_#1A1A2E] mb-2">
+              PRIVATE DUEL
+            </span>
+            <h2 className="font-display font-black text-2xl mb-2 text-border tracking-tight">
+              Play with a Friend
+            </h2>
+            <p className="mb-4 font-body text-border/70 text-xs font-medium max-w-xs">
+              Create a private room to share a direct link with a friend, or enter a 6-letter room code to join.
+            </p>
 
-        <button
-          onClick={handleFindMatch}
-          disabled={isSearching}
-          className="btn-brutal bg-primary px-8 py-3.5 w-full font-bold flex items-center justify-center gap-2 text-border text-sm disabled:opacity-70 disabled:cursor-not-allowed"
-        >
-          {isSearching ? (
-            <>
-              <Loader2 className="w-5 h-5 animate-spin" />
-              Searching for opponent...
-            </>
-          ) : (
-            'Find Match'
+            {/* Create Lobby Button */}
+            <button
+              onClick={handleCreatePrivateMatch}
+              disabled={isCreatingPrivate || isSearching || isJoiningPrivate}
+              className="btn-brutal bg-pastel-purple px-6 py-2.5 w-full font-bold flex items-center justify-center gap-2 text-border text-xs mb-4 shadow-brutal-sm disabled:opacity-70"
+            >
+              {isCreatingPrivate ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Creating room...
+                </>
+              ) : (
+                'Create Private Room'
+              )}
+            </button>
+
+            {/* Divider */}
+            <div className="w-full flex items-center gap-2 my-2">
+              <div className="flex-1 h-0.5 bg-border/20"></div>
+              <span className="text-[10px] font-display font-black uppercase tracking-wider text-border/50">
+                or enter code
+              </span>
+              <div className="flex-1 h-0.5 bg-border/20"></div>
+            </div>
+
+            {/* Join Code Input Form */}
+            <form onSubmit={handleJoinPrivateMatch} className="w-full flex gap-2 mt-2">
+              <input
+                type="text"
+                maxLength={6}
+                value={inviteCodeInput}
+                onChange={(e) => setInviteCodeInput(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
+                placeholder="CODE"
+                className="input-brutal flex-1 py-2 px-3 text-center uppercase tracking-widest font-mono font-black text-sm text-border bg-white"
+              />
+              <button
+                type="submit"
+                disabled={!inviteCodeInput.trim() || isJoiningPrivate || isSearching || isCreatingPrivate}
+                className="btn-brutal bg-primary px-4 py-2 font-bold text-xs text-border flex items-center justify-center gap-1 shrink-0 disabled:opacity-50"
+              >
+                {isJoiningPrivate ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Join'}
+              </button>
+            </form>
+          </div>
+
+          {hasInviteFromUrl && (
+            <p className="text-[11px] font-display font-bold text-correct mt-3">
+              Invite code detected! Click Join to start the duel.
+            </p>
           )}
-        </button>
+        </div>
       </div>
 
       {/* Live Duels / Spectator Section */}
-      <div className="w-full max-w-lg mt-12">
+      <div className="w-full max-w-4xl">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <Eye className="w-5 h-5 text-border" />

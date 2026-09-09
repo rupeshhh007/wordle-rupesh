@@ -45,6 +45,35 @@ public class ArenaController {
     }
 
     /*
+     * Create a new private Arena match with an invite code.
+     */
+    @PostMapping("/private")
+    public ResponseEntity<ArenaMatchResponse> createPrivateMatch(
+            Authentication authentication) {
+
+        User user = getAuthenticatedUser(authentication);
+
+        return ResponseEntity.ok(
+                arenaService.createPrivateMatch(user)
+        );
+    }
+
+    /*
+     * Join an existing private Arena match using an invite code.
+     */
+    @PostMapping("/join-private")
+    public ResponseEntity<ArenaMatchResponse> joinPrivateMatch(
+            @Valid @RequestBody com.wordlearena.arena.dto.JoinPrivateMatchRequest request,
+            Authentication authentication) {
+
+        User user = getAuthenticatedUser(authentication);
+
+        return ResponseEntity.ok(
+                arenaService.joinPrivateMatch(request.getInviteCode(), user)
+        );
+    }
+
+    /*
      * Get the current active Arena match for the authenticated user, if any.
      */
     @GetMapping("/active")
