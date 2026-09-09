@@ -112,6 +112,10 @@ public class SecurityConfig {
                         ).permitAll()
 
                         .requestMatchers(
+                                "/api/health"
+                        ).permitAll()
+
+                        .requestMatchers(
                                 "/error"
                         ).permitAll()
 
