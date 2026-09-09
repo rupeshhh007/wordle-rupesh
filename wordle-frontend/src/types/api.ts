@@ -101,6 +101,7 @@ export interface ArenaMatchResponse {
   startedAt: string | null;
   completedAt: string | null;
   isPrivate?: boolean;
+  private?: boolean;
   inviteCode?: string;
 }
 
@@ -117,6 +118,9 @@ export interface ArenaMatchDetailsResponse {
   createdAt: string;
   startedAt: string | null;
   completedAt: string | null;
+  isPrivate?: boolean;
+  private?: boolean;
+  inviteCode?: string;
 }
 
 export interface ArenaGuessResponse {

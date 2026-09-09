@@ -1,5 +1,6 @@
 package com.wordlearena.arena.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.wordlearena.arena.entity.ArenaMatchStatus;
 import com.wordlearena.arena.entity.ArenaWinner;
 
@@ -17,7 +18,11 @@ public class ArenaMatchResponse {
     private LocalDateTime createdAt;
     private LocalDateTime startedAt;
     private LocalDateTime completedAt;
+
+    @JsonProperty("isPrivate")
     private boolean isPrivate;
+
+    @JsonProperty("inviteCode")
     private String inviteCode;
 
     public ArenaMatchResponse(
@@ -103,10 +108,17 @@ public class ArenaMatchResponse {
         return completedAt;
     }
 
+    @JsonProperty("isPrivate")
     public boolean isPrivate() {
         return isPrivate;
     }
 
+    @JsonProperty("isPrivate")
+    public boolean getIsPrivate() {
+        return isPrivate;
+    }
+
+    @JsonProperty("inviteCode")
     public String getInviteCode() {
         return inviteCode;
     }

@@ -267,7 +267,11 @@ public class ArenaService {
 
                 match.getStartedAt(),
 
-                match.getCompletedAt()
+                match.getCompletedAt(),
+
+                match.isPrivate(),
+
+                match.getInviteCode()
         );
     }
 

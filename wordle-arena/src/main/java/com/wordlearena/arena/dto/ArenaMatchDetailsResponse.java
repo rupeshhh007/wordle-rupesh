@@ -1,5 +1,6 @@
 package com.wordlearena.arena.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.wordlearena.arena.entity.ArenaMatchStatus;
 import com.wordlearena.arena.entity.ArenaWinner;
 
@@ -26,6 +27,12 @@ public class ArenaMatchDetailsResponse {
     private LocalDateTime startedAt;
     private LocalDateTime completedAt;
 
+    @JsonProperty("isPrivate")
+    private boolean isPrivate;
+
+    @JsonProperty("inviteCode")
+    private String inviteCode;
+
     public ArenaMatchDetailsResponse(
             Long id,
             String player1,
@@ -40,6 +47,25 @@ public class ArenaMatchDetailsResponse {
             LocalDateTime startedAt,
             LocalDateTime completedAt
     ) {
+        this(id, player1, player2, status, winner, player1Attempts, player2Attempts, player1Guesses, player2Guesses, createdAt, startedAt, completedAt, false, null);
+    }
+
+    public ArenaMatchDetailsResponse(
+            Long id,
+            String player1,
+            String player2,
+            ArenaMatchStatus status,
+            ArenaWinner winner,
+            int player1Attempts,
+            int player2Attempts,
+            List<ArenaGuessHistoryResponse> player1Guesses,
+            List<ArenaGuessHistoryResponse> player2Guesses,
+            LocalDateTime createdAt,
+            LocalDateTime startedAt,
+            LocalDateTime completedAt,
+            boolean isPrivate,
+            String inviteCode
+    ) {
         this.id = id;
         this.player1 = player1;
         this.player2 = player2;
@@ -52,6 +78,8 @@ public class ArenaMatchDetailsResponse {
         this.createdAt = createdAt;
         this.startedAt = startedAt;
         this.completedAt = completedAt;
+        this.isPrivate = isPrivate;
+        this.inviteCode = inviteCode;
     }
 
     public Long getId() {
@@ -100,5 +128,20 @@ public class ArenaMatchDetailsResponse {
 
     public LocalDateTime getCompletedAt() {
         return completedAt;
+    }
+
+    @JsonProperty("isPrivate")
+    public boolean isPrivate() {
+        return isPrivate;
+    }
+
+    @JsonProperty("isPrivate")
+    public boolean getIsPrivate() {
+        return isPrivate;
+    }
+
+    @JsonProperty("inviteCode")
+    public String getInviteCode() {
+        return inviteCode;
     }
 }

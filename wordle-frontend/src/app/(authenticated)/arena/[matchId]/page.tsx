@@ -98,22 +98,26 @@ export default function ArenaMatchPage({
   const [copiedCode, setCopiedCode] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
 
-  useEffect(() => {
-    if (match?.isPrivate && match?.status === "WAITING") {
-      setRemainingSeconds((prev) => (prev <= WAITING_TIMEOUT_SECONDS ? 600 : prev));
-    }
-  }, [match?.isPrivate, match?.status]);
+  const isPrivateMatch = Boolean(
+    match?.inviteCode ||
+    match?.isPrivate ||
+    (match as any)?.private ||
+    matchDetails?.inviteCode ||
+    (matchDetails as any)?.isPrivate ||
+    (matchDetails as any)?.private
+  );
+  const inviteCode = match?.inviteCode || matchDetails?.inviteCode || (match as any)?.code || "";
 
   const handleCopyCode = () => {
-    if (!match?.inviteCode) return;
-    navigator.clipboard.writeText(match.inviteCode);
+    if (!inviteCode) return;
+    navigator.clipboard.writeText(inviteCode);
     setCopiedCode(true);
     setTimeout(() => setCopiedCode(false), 2000);
   };
 
   const handleCopyLink = () => {
-    if (!match?.inviteCode || typeof window === "undefined") return;
-    const url = `${window.location.origin}/arena?code=${match.inviteCode}`;
+    if (!inviteCode || typeof window === "undefined") return;
+    const url = `${window.location.origin}/arena?code=${inviteCode}`;
     navigator.clipboard.writeText(url);
     setCopiedLink(true);
     setTimeout(() => setCopiedLink(false), 2000);
@@ -371,9 +375,10 @@ export default function ArenaMatchPage({
       const createdAtMs = parseUtcDate(match.createdAt);
       const now = Date.now();
       const elapsedSec = Math.max(0, Math.floor((now - createdAtMs) / 1000));
+      const maxWait = isPrivateMatch ? 600 : WAITING_TIMEOUT_SECONDS;
 
       // Calculate initial remaining seconds; keep at least 30s so user is never instantly ejected
-      const initialRemaining = Math.max(30, WAITING_TIMEOUT_SECONDS - elapsedSec);
+      const initialRemaining = Math.max(30, maxWait - elapsedSec);
       setRemainingSeconds(initialRemaining);
 
       waitingTimer.current = setInterval(() => {
@@ -400,7 +405,7 @@ export default function ArenaMatchPage({
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [match?.status, match?.createdAt]);
+  }, [match?.status, match?.createdAt, isPrivateMatch, isSpectator]);
 
   // Warn user before leaving during an in-progress match
   useEffect(() => {
@@ -542,7 +547,7 @@ export default function ArenaMatchPage({
     const minutes = Math.floor(remainingSeconds / 60);
     const seconds = remainingSeconds % 60;
 
-    if (match.isPrivate) {
+    if (isPrivateMatch) {
       return (
         <div className="flex flex-col items-center justify-center min-h-[60vh] py-8">
           <div className="card-brutal p-8 text-center max-w-lg mx-auto w-full border-3 border-border shadow-brutal bg-surface flex flex-col items-center">
@@ -562,7 +567,7 @@ export default function ArenaMatchPage({
                 ROOM INVITE CODE
               </span>
               <div className="font-display font-black text-3xl sm:text-4xl text-border tracking-[0.25em] select-all py-1">
-                {match.inviteCode}
+                {inviteCode || "..."}
               </div>
               <p className="font-body text-xs text-border/70 mt-1 font-medium">
                 Share this 6-letter code or invite link with your friend
