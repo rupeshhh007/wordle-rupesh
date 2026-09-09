@@ -8,6 +8,7 @@ import com.wordlearena.user.repository.UserRepository;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -31,6 +32,21 @@ public class StatsController {
             Authentication authentication) {
 
         User user = getAuthenticatedUser(authentication);
+
+        return ResponseEntity.ok(
+                statsService.getStats(user)
+        );
+    }
+
+    @GetMapping("/{username}/stats")
+    public ResponseEntity<StatsResponse> getUserStats(
+            @PathVariable String username) {
+
+        User user = userRepository
+                .findByUsername(username)
+                .orElseThrow(() ->
+                        new UserNotFoundException("User not found: " + username)
+                );
 
         return ResponseEntity.ok(
                 statsService.getStats(user)

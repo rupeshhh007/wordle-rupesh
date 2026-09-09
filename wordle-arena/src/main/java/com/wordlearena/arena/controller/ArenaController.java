@@ -192,4 +192,28 @@ public class ArenaController {
                 arenaService.getMatchDetails(matchId, user)
         );
     }
+
+    @PostMapping("/{matchId}/rematch")
+    public ResponseEntity<ArenaMatchResponse> requestRematch(
+            @PathVariable Long matchId,
+            Authentication authentication
+    ) {
+        User user = getAuthenticatedUser(authentication);
+
+        return ResponseEntity.ok(
+                arenaService.requestRematch(matchId, user)
+        );
+    }
+
+    @PostMapping("/{matchId}/rematch/cancel")
+    public ResponseEntity<ArenaMatchResponse> cancelRematch(
+            @PathVariable Long matchId,
+            Authentication authentication
+    ) {
+        User user = getAuthenticatedUser(authentication);
+
+        return ResponseEntity.ok(
+                arenaService.cancelRematch(matchId, user)
+        );
+    }
 }

@@ -8,6 +8,8 @@ import {
   submitArenaGuess,
   cancelMatch,
   forfeitMatch,
+  requestRematch,
+  cancelRematch,
 } from "@/lib/api/arena";
 import { getMe } from "@/lib/api/users";
 import { ApiError, ConcurrentModificationError } from "@/lib/api/client";
@@ -25,7 +27,7 @@ import { useGameInput } from "@/hooks/useGameInput";
 import { useAuthStore } from "@/stores/auth-store";
 import { LoadingState } from "@/components/ui/LoadingState";
 import { Avatar } from "@/components/ui/Avatar";
-import { Flag, Eye, ArrowLeft, Copy, Check, Link2 } from "lucide-react";
+import { Flag, Eye, ArrowLeft, Copy, Check, Link2, Loader2, RefreshCw } from "lucide-react";
 
 /** Max seconds to wait in WAITING state before auto-cancelling. */
 const WAITING_TIMEOUT_SECONDS = 180;
@@ -190,6 +192,60 @@ export default function ArenaMatchPage({
     ? match?.player2Attempts
     : match?.player1Attempts;
   const opponentName = isPlayer1 ? match?.player2 : match?.player1;
+
+  const [isRequestingRematch, setIsRequestingRematch] = useState(false);
+  const [isCancellingRematch, setIsCancellingRematch] = useState(false);
+
+  const myRematchRequested = isPlayer1
+    ? Boolean(match?.rematchRequestedByPlayer1)
+    : Boolean(match?.rematchRequestedByPlayer2);
+  const opponentRematchRequested = isPlayer1
+    ? Boolean(match?.rematchRequestedByPlayer2)
+    : Boolean(match?.rematchRequestedByPlayer1);
+
+  const handlePlayAgain = async () => {
+    if (isPrivateMatch && !isSpectator) {
+      if (isRequestingRematch || myRematchRequested) return;
+      try {
+        setIsRequestingRematch(true);
+        const updated = await requestRematch(matchIdNum);
+        if (!mounted.current) return;
+        setMatch(updated);
+        if (updated.nextMatchId) {
+          clearAllTimers();
+          router.push(`/arena/${updated.nextMatchId}`);
+        }
+      } catch (err: any) {
+        if (mounted.current) {
+          setError(err.message || "Failed to request rematch");
+        }
+      } finally {
+        if (mounted.current) {
+          setIsRequestingRematch(false);
+        }
+      }
+    } else {
+      router.push("/arena");
+    }
+  };
+
+  const handleCancelRematch = async () => {
+    if (!isPrivateMatch || isSpectator || isCancellingRematch) return;
+    try {
+      setIsCancellingRematch(true);
+      const updated = await cancelRematch(matchIdNum);
+      if (!mounted.current) return;
+      setMatch(updated);
+    } catch (err: any) {
+      if (mounted.current) {
+        setError(err.message || "Failed to cancel rematch");
+      }
+    } finally {
+      if (mounted.current) {
+        setIsCancellingRematch(false);
+      }
+    }
+  };
 
   const fetchUpdatedRating = async () => {
     try {
@@ -368,6 +424,33 @@ export default function ArenaMatchPage({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [match?.status, matchIdNum, username]);
+
+  // Terminal polling in private match to detect rematch requests and nextMatchId
+  useEffect(() => {
+    if (!match || !isPrivateMatch || isSpectator || !isTerminal(match.status)) return;
+    if (match.nextMatchId) {
+      clearAllTimers();
+      router.push(`/arena/${match.nextMatchId}`);
+      return;
+    }
+
+    const interval = setInterval(async () => {
+      try {
+        const updatedMatch = await getMatch(matchIdNum);
+        if (!mounted.current) return;
+        setMatch(updatedMatch);
+        if (updatedMatch.nextMatchId) {
+          clearInterval(interval);
+          clearAllTimers();
+          router.push(`/arena/${updatedMatch.nextMatchId}`);
+        }
+      } catch {
+        // ignore
+      }
+    }, 2000);
+
+    return () => clearInterval(interval);
+  }, [match?.status, isPrivateMatch, isSpectator, matchIdNum, router, match?.nextMatchId, clearAllTimers]);
 
   // WAITING timeout countdown (only for actual participants)
   useEffect(() => {
@@ -921,18 +1004,63 @@ export default function ArenaMatchPage({
                   </div>
                 )}
 
-                <div className="flex justify-center gap-4 mt-3 w-full">
+                {/* Rematch banner when opponent wants to play again */}
+                {isPrivateMatch && !isSpectator && opponentRematchRequested && !myRematchRequested && (
+                  <div className="w-full mt-1 mb-3 p-2.5 bg-pastel-yellow border-2 border-border rounded-sm shadow-brutal-sm text-xs font-display font-black text-border animate-pulse text-center">
+                    🔥 {opponentName || "Opponent"} wants a rematch! Click Play Again to start!
+                  </div>
+                )}
+
+                <div className="flex flex-wrap items-center justify-center gap-3 mt-3 w-full">
+                  {isPrivateMatch && !isSpectator && myRematchRequested ? (
+                    <div className="flex items-center gap-2">
+                      <button
+                        disabled
+                        className="btn-brutal bg-pastel-purple px-5 py-2.5 font-bold text-border text-xs sm:text-sm flex items-center gap-2 cursor-wait shadow-brutal-sm"
+                      >
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Waiting for {opponentName || "opponent"}...
+                      </button>
+                      <button
+                        onClick={handleCancelRematch}
+                        disabled={isCancellingRematch}
+                        className="btn-brutal bg-pastel-pink px-3 py-2.5 font-bold text-border text-xs hover:bg-pastel-pink/80 shadow-brutal-sm"
+                        title="Cancel Rematch Request"
+                      >
+                        {isCancellingRematch ? "..." : "Cancel"}
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={handlePlayAgain}
+                      disabled={isRequestingRematch}
+                      className={`btn-brutal px-6 py-2.5 font-bold text-border text-sm flex items-center gap-2 shadow-brutal-sm ${
+                        isPrivateMatch && opponentRematchRequested
+                          ? "bg-pastel-green ring-2 ring-border animate-bounce"
+                          : "bg-primary"
+                      }`}
+                    >
+                      {isRequestingRematch ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          Starting...
+                        </>
+                      ) : isPrivateMatch && opponentRematchRequested ? (
+                        <>
+                          <RefreshCw className="w-4 h-4" />
+                          Accept Rematch
+                        </>
+                      ) : (
+                        "Play Again"
+                      )}
+                    </button>
+                  )}
+
                   <button
-                    onClick={() => router.push("/arena")}
-                    className="btn-brutal bg-primary px-6 py-2.5 font-bold text-border text-sm"
+                    onClick={() => router.push(isPrivateMatch ? "/arena" : "/")}
+                    className="btn-brutal bg-surface px-6 py-2.5 font-bold text-border text-sm shadow-brutal-sm hover:bg-bg"
                   >
-                    Play Again
-                  </button>
-                  <button
-                    onClick={() => router.push("/")}
-                    className="btn-brutal bg-surface px-6 py-2.5 font-bold text-border text-sm"
-                  >
-                    Dashboard
+                    {isPrivateMatch ? "Leave Lobby" : "Dashboard"}
                   </button>
                 </div>
               </div>

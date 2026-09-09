@@ -1,17 +1,19 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { getLeaderboard, getMyRank } from "@/lib/api/leaderboard";
 import { useAuthStore } from "@/stores/auth-store";
 import type {
   LeaderboardEntryResponse,
   MyLeaderboardResponse,
 } from "@/types/api";
-import { Trophy, Medal, Crown } from "lucide-react";
+import { Trophy, Medal, Crown, ChevronRight } from "lucide-react";
 import { LoadingState } from "@/components/ui/LoadingState";
 import { Avatar } from "@/components/ui/Avatar";
 
 export default function LeaderboardPage() {
+  const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const [entries, setEntries] = useState<LeaderboardEntryResponse[]>([]);
   const [myRank, setMyRank] = useState<MyLeaderboardResponse | null>(null);
@@ -53,7 +55,10 @@ export default function LeaderboardPage() {
 
       {/* My Rank Card */}
       {myRank && (
-        <div className="card-brutal card-interactive p-5 bg-pastel-yellow">
+        <div
+          onClick={() => router.push("/profile")}
+          className="card-brutal card-interactive p-5 bg-pastel-yellow cursor-pointer hover:brightness-95 transition-all"
+        >
           <div className="flex items-center justify-between">
             <div>
               <p className="font-display text-sm text-text-secondary uppercase font-semibold">
@@ -97,17 +102,21 @@ export default function LeaderboardPage() {
                 return (
                   <tr
                     key={entry.userId}
-                    className={`border-b border-border/20 transition-colors ${
+                    onClick={() => {
+                      if (isMe) router.push("/profile");
+                      else router.push(`/profile/${encodeURIComponent(entry.username)}`);
+                    }}
+                    className={`border-b border-border/20 transition-colors cursor-pointer group ${
                       isMe
-                        ? "bg-pastel-yellow font-bold"
-                        : "hover:bg-bg"
+                        ? "bg-pastel-yellow font-bold hover:bg-pastel-yellow/80"
+                        : "hover:bg-pastel-yellow/30"
                     }`}
                   >
                     <td className="px-4 py-3">
                       <RankDisplay rank={entry.rank} />
                     </td>
                     <td className="px-4 py-3">
-                      <span className="font-display font-semibold inline-flex items-center gap-2">
+                      <span className="font-display font-semibold inline-flex items-center gap-2 group-hover:underline underline-offset-2">
                         <Avatar username={entry.username} size="sm" />
                         {entry.username}
                         {isMe && (
@@ -118,8 +127,9 @@ export default function LeaderboardPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <span className="font-display font-black text-lg">
+                      <span className="font-display font-black text-lg inline-flex items-center gap-1.5">
                         {entry.rating}
+                        <ChevronRight className="w-4 h-4 text-border/30 group-hover:text-border group-hover:translate-x-0.5 transition-all" />
                       </span>
                     </td>
                   </tr>
@@ -136,8 +146,12 @@ export default function LeaderboardPage() {
             return (
               <div
                 key={entry.userId}
-                className={`flex items-center justify-between px-4 py-3 ${
-                  isMe ? "bg-pastel-yellow" : ""
+                onClick={() => {
+                  if (isMe) router.push("/profile");
+                  else router.push(`/profile/${encodeURIComponent(entry.username)}`);
+                }}
+                className={`flex items-center justify-between px-4 py-3 cursor-pointer transition-colors ${
+                  isMe ? "bg-pastel-yellow hover:bg-pastel-yellow/80" : "hover:bg-pastel-yellow/30"
                 }`}
               >
                 <div className="flex items-center gap-3">
@@ -152,8 +166,9 @@ export default function LeaderboardPage() {
                     )}
                   </span>
                 </div>
-                <span className="font-display font-black text-lg">
+                <span className="font-display font-black text-lg inline-flex items-center gap-1">
                   {entry.rating}
+                  <ChevronRight className="w-4 h-4 text-border/30" />
                 </span>
               </div>
             );

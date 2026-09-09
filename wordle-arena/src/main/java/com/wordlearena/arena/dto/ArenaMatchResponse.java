@@ -25,6 +25,15 @@ public class ArenaMatchResponse {
     @JsonProperty("inviteCode")
     private String inviteCode;
 
+    @JsonProperty("rematchRequestedByPlayer1")
+    private boolean rematchRequestedByPlayer1;
+
+    @JsonProperty("rematchRequestedByPlayer2")
+    private boolean rematchRequestedByPlayer2;
+
+    @JsonProperty("nextMatchId")
+    private Long nextMatchId;
+
     public ArenaMatchResponse(
             Long id,
             String player1,
@@ -37,7 +46,7 @@ public class ArenaMatchResponse {
             LocalDateTime startedAt,
             LocalDateTime completedAt
     ) {
-        this(id, player1, player2, status, winner, player1Attempts, player2Attempts, createdAt, startedAt, completedAt, false, null);
+        this(id, player1, player2, status, winner, player1Attempts, player2Attempts, createdAt, startedAt, completedAt, false, null, false, false, null);
     }
 
     public ArenaMatchResponse(
@@ -54,6 +63,26 @@ public class ArenaMatchResponse {
             boolean isPrivate,
             String inviteCode
     ) {
+        this(id, player1, player2, status, winner, player1Attempts, player2Attempts, createdAt, startedAt, completedAt, isPrivate, inviteCode, false, false, null);
+    }
+
+    public ArenaMatchResponse(
+            Long id,
+            String player1,
+            String player2,
+            ArenaMatchStatus status,
+            ArenaWinner winner,
+            int player1Attempts,
+            int player2Attempts,
+            LocalDateTime createdAt,
+            LocalDateTime startedAt,
+            LocalDateTime completedAt,
+            boolean isPrivate,
+            String inviteCode,
+            boolean rematchRequestedByPlayer1,
+            boolean rematchRequestedByPlayer2,
+            Long nextMatchId
+    ) {
         this.id = id;
         this.player1 = player1;
         this.player2 = player2;
@@ -66,6 +95,9 @@ public class ArenaMatchResponse {
         this.completedAt = completedAt;
         this.isPrivate = isPrivate;
         this.inviteCode = inviteCode;
+        this.rematchRequestedByPlayer1 = rematchRequestedByPlayer1;
+        this.rematchRequestedByPlayer2 = rematchRequestedByPlayer2;
+        this.nextMatchId = nextMatchId;
     }
 
     public Long getId() {
@@ -121,5 +153,20 @@ public class ArenaMatchResponse {
     @JsonProperty("inviteCode")
     public String getInviteCode() {
         return inviteCode;
+    }
+
+    @JsonProperty("rematchRequestedByPlayer1")
+    public boolean isRematchRequestedByPlayer1() {
+        return rematchRequestedByPlayer1;
+    }
+
+    @JsonProperty("rematchRequestedByPlayer2")
+    public boolean isRematchRequestedByPlayer2() {
+        return rematchRequestedByPlayer2;
+    }
+
+    @JsonProperty("nextMatchId")
+    public Long getNextMatchId() {
+        return nextMatchId;
     }
 }

@@ -71,6 +71,14 @@ public class ArenaMatch {
     @Column(length = 16)
     private String inviteCode;
 
+    @Column(nullable = false, columnDefinition = "boolean default false")
+    private boolean rematchRequestedByPlayer1 = false;
+
+    @Column(nullable = false, columnDefinition = "boolean default false")
+    private boolean rematchRequestedByPlayer2 = false;
+
+    private Long nextMatchId;
+
     @Version
     private Long version;
 
@@ -183,6 +191,30 @@ public class ArenaMatch {
 
     public void setInviteCode(String inviteCode) {
         this.inviteCode = inviteCode;
+    }
+
+    public boolean isRematchRequestedByPlayer1() {
+        return rematchRequestedByPlayer1;
+    }
+
+    public void setRematchRequestedByPlayer1(boolean rematchRequestedByPlayer1) {
+        this.rematchRequestedByPlayer1 = rematchRequestedByPlayer1;
+    }
+
+    public boolean isRematchRequestedByPlayer2() {
+        return rematchRequestedByPlayer2;
+    }
+
+    public void setRematchRequestedByPlayer2(boolean rematchRequestedByPlayer2) {
+        this.rematchRequestedByPlayer2 = rematchRequestedByPlayer2;
+    }
+
+    public Long getNextMatchId() {
+        return nextMatchId;
+    }
+
+    public void setNextMatchId(Long nextMatchId) {
+        this.nextMatchId = nextMatchId;
     }
 
     public Long getVersion() {

@@ -31,10 +31,12 @@ class PrivateLobbyServiceTest {
     private ArenaService arenaService;
 
     private final Map<String, ArenaMatch> matchStore = new HashMap<>();
+    private final Map<Long, ArenaMatch> idStore = new HashMap<>();
 
     @BeforeEach
     void setUp() {
         matchStore.clear();
+        idStore.clear();
 
         arenaMatchRepository = (ArenaMatchRepository) Proxy.newProxyInstance(
                 ArenaMatchRepository.class.getClassLoader(),
@@ -47,13 +49,20 @@ class PrivateLobbyServiceTest {
                             try {
                                 var idField = ArenaMatch.class.getDeclaredField("id");
                                 idField.setAccessible(true);
-                                idField.set(m, 100L + matchStore.size());
+                                idField.set(m, 100L + idStore.size() + 1);
                             } catch (Exception ignored) {}
+                        }
+                        if (m.getId() != null) {
+                            idStore.put(m.getId(), m);
                         }
                         if (m.getInviteCode() != null) {
                             matchStore.put(m.getInviteCode(), m);
                         }
                         return m;
+                    }
+                    if ("findById".equals(name)) {
+                        Long id = (Long) args[0];
+                        return Optional.ofNullable(idStore.get(id));
                     }
                     if ("findByInviteCode".equals(name)) {
                         String code = (String) args[0];
@@ -231,6 +240,85 @@ class PrivateLobbyServiceTest {
 
         assertThrows(IllegalStateException.class, () ->
                 arenaService.joinPrivateMatch(created.getInviteCode(), friend)
+        );
+    }
+
+    @Test
+    void requestRematch_firstPlayer_updatesStatusWaitingForOpponent() {
+        User host = createUser(1L, "hostUser");
+        User friend = createUser(2L, "friendUser");
+
+        ArenaMatchResponse created = arenaService.createPrivateMatch(host);
+        arenaService.joinPrivateMatch(created.getInviteCode(), friend);
+
+        ArenaMatch match = matchStore.get(created.getInviteCode());
+        match.setStatus(ArenaMatchStatus.PLAYER1_WON);
+
+        ArenaMatchResponse rematchRes = arenaService.requestRematch(match.getId(), host);
+
+        assertTrue(rematchRes.isRematchRequestedByPlayer1(), "Player 1 has requested rematch");
+        assertFalse(rematchRes.isRematchRequestedByPlayer2(), "Player 2 has not yet requested rematch");
+        assertNull(rematchRes.getNextMatchId(), "No new match created yet");
+    }
+
+    @Test
+    void requestRematch_bothPlayers_createsNewInProgressMatch() {
+        User host = createUser(1L, "hostUser");
+        User friend = createUser(2L, "friendUser");
+
+        ArenaMatchResponse created = arenaService.createPrivateMatch(host);
+        arenaService.joinPrivateMatch(created.getInviteCode(), friend);
+
+        ArenaMatch match = matchStore.get(created.getInviteCode());
+        match.setStatus(ArenaMatchStatus.PLAYER2_WON);
+
+        arenaService.requestRematch(match.getId(), host);
+        ArenaMatchResponse secondRes = arenaService.requestRematch(match.getId(), friend);
+
+        assertTrue(secondRes.isRematchRequestedByPlayer1());
+        assertTrue(secondRes.isRematchRequestedByPlayer2());
+        assertNotNull(secondRes.getNextMatchId(), "New match created!");
+
+        ArenaMatch newMatch = idStore.get(secondRes.getNextMatchId());
+
+        assertNotNull(newMatch);
+        assertEquals(ArenaMatchStatus.IN_PROGRESS, newMatch.getStatus());
+        assertEquals("hostUser", newMatch.getPlayer1().getUsername());
+        assertEquals("friendUser", newMatch.getPlayer2().getUsername());
+        assertEquals(created.getInviteCode(), newMatch.getInviteCode(), "Preserves private lobby invite code");
+    }
+
+    @Test
+    void cancelRematch_resetsFlag() {
+        User host = createUser(1L, "hostUser");
+        User friend = createUser(2L, "friendUser");
+
+        ArenaMatchResponse created = arenaService.createPrivateMatch(host);
+        arenaService.joinPrivateMatch(created.getInviteCode(), friend);
+
+        ArenaMatch match = matchStore.get(created.getInviteCode());
+        match.setStatus(ArenaMatchStatus.DRAW);
+
+        arenaService.requestRematch(match.getId(), host);
+        ArenaMatchResponse cancelled = arenaService.cancelRematch(match.getId(), host);
+
+        assertFalse(cancelled.isRematchRequestedByPlayer1());
+        assertNull(cancelled.getNextMatchId());
+    }
+
+    @Test
+    void requestRematch_notCompleted_throwsException() {
+        User host = createUser(1L, "hostUser");
+        User friend = createUser(2L, "friendUser");
+
+        ArenaMatchResponse created = arenaService.createPrivateMatch(host);
+        arenaService.joinPrivateMatch(created.getInviteCode(), friend);
+
+        ArenaMatch match = matchStore.get(created.getInviteCode());
+        // Status is still IN_PROGRESS
+
+        assertThrows(IllegalStateException.class, () ->
+                arenaService.requestRematch(match.getId(), host)
         );
     }
 }

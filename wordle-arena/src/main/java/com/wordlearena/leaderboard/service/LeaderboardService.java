@@ -65,4 +65,18 @@ public class LeaderboardService {
                 currentUser.getRating()
         );
     }
+
+    @Transactional(readOnly = true)
+    public int getUserRank(User user) {
+        List<User> users =
+                userRepository.findAllByOrderByRatingDescUsernameAsc();
+
+        for (int i = 0; i < users.size(); i++) {
+            if (users.get(i).getId().equals(user.getId())) {
+                return i + 1;
+            }
+        }
+
+        return -1;
+    }
 }

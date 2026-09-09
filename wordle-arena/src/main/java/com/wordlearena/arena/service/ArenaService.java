@@ -271,7 +271,13 @@ public class ArenaService {
 
                 match.isPrivate(),
 
-                match.getInviteCode()
+                match.getInviteCode(),
+
+                match.isRematchRequestedByPlayer1(),
+
+                match.isRematchRequestedByPlayer2(),
+
+                match.getNextMatchId()
         );
     }
 
@@ -775,6 +781,79 @@ public class ArenaService {
         throw new IllegalStateException("Failed to generate unique invite code");
     }
 
+    @Transactional
+    public ArenaMatchResponse requestRematch(Long matchId, User user) {
+        ArenaMatch match = getMatchForUser(matchId, user);
+
+        if (!match.isPrivate()) {
+            throw new IllegalStateException("Rematch is only available for private lobbies");
+        }
+
+        if (!isCompletedStatus(match.getStatus())) {
+            throw new IllegalStateException("Cannot request a rematch until the current match is finished");
+        }
+
+        // If a new match was already generated (e.g. by concurrent accept), return immediately
+        if (match.getNextMatchId() != null) {
+            return toResponse(match);
+        }
+
+        boolean isPlayer1 = match.getPlayer1().getId().equals(user.getId());
+        if (isPlayer1) {
+            match.setRematchRequestedByPlayer1(true);
+        } else {
+            match.setRematchRequestedByPlayer2(true);
+        }
+
+        if (match.isRematchRequestedByPlayer1() && match.isRematchRequestedByPlayer2()) {
+            // Both players agreed to rematch!
+            Word word = wordRepository
+                    .findRandomAnswerEligibleWord()
+                    .orElseThrow(() -> new IllegalStateException("No answer-eligible words available"));
+
+            ArenaMatch newMatch = new ArenaMatch();
+            newMatch.setPlayer1(match.getPlayer1());
+            newMatch.setPlayer2(match.getPlayer2());
+            newMatch.setWord(word);
+            newMatch.setStatus(ArenaMatchStatus.IN_PROGRESS);
+            newMatch.setWinner(null);
+            newMatch.setPlayer1Attempts(0);
+            newMatch.setPlayer2Attempts(0);
+            newMatch.setRatingUpdated(false);
+            newMatch.setCreatedAt(LocalDateTime.now());
+            newMatch.setStartedAt(LocalDateTime.now());
+            newMatch.setPrivate(true);
+            newMatch.setInviteCode(match.getInviteCode());
+
+            arenaMatchRepository.save(newMatch);
+
+            match.setNextMatchId(newMatch.getId());
+        }
+
+        arenaMatchRepository.save(match);
+        return toResponse(match);
+    }
+
+    @Transactional
+    public ArenaMatchResponse cancelRematch(Long matchId, User user) {
+        ArenaMatch match = getMatchForUser(matchId, user);
+
+        // If the match already started, cannot cancel
+        if (match.getNextMatchId() != null) {
+            return toResponse(match);
+        }
+
+        boolean isPlayer1 = match.getPlayer1().getId().equals(user.getId());
+        if (isPlayer1) {
+            match.setRematchRequestedByPlayer1(false);
+        } else {
+            match.setRematchRequestedByPlayer2(false);
+        }
+
+        arenaMatchRepository.save(match);
+        return toResponse(match);
+    }
+
     private ArenaMatchResponse toResponse(
             ArenaMatch match) {
 
@@ -792,7 +871,10 @@ public class ArenaService {
                 match.getStartedAt(),
                 match.getCompletedAt(),
                 match.isPrivate(),
-                match.getInviteCode()
+                match.getInviteCode(),
+                match.isRematchRequestedByPlayer1(),
+                match.isRematchRequestedByPlayer2(),
+                match.getNextMatchId()
         );
     }
 }

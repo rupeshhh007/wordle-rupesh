@@ -41,6 +41,13 @@ export interface UserResponse {
   rating: number;
 }
 
+export interface PublicUserProfileResponse {
+  id: number;
+  username: string;
+  rating: number;
+  rank: number;
+}
+
 // ============ GAME ============
 
 export interface StartGameRequest {
@@ -103,6 +110,9 @@ export interface ArenaMatchResponse {
   isPrivate?: boolean;
   private?: boolean;
   inviteCode?: string;
+  rematchRequestedByPlayer1?: boolean;
+  rematchRequestedByPlayer2?: boolean;
+  nextMatchId?: number | null;
 }
 
 export interface ArenaMatchDetailsResponse {
@@ -121,6 +131,9 @@ export interface ArenaMatchDetailsResponse {
   isPrivate?: boolean;
   private?: boolean;
   inviteCode?: string;
+  rematchRequestedByPlayer1?: boolean;
+  rematchRequestedByPlayer2?: boolean;
+  nextMatchId?: number | null;
 }
 
 export interface ArenaGuessResponse {

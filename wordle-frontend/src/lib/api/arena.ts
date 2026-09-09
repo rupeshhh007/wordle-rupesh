@@ -56,3 +56,11 @@ export function joinPrivateMatch(inviteCode: string): Promise<ArenaMatchResponse
   return post<ArenaMatchResponse>("/api/arena/join-private", { inviteCode });
 }
 
+export function requestRematch(matchId: number): Promise<ArenaMatchResponse> {
+  return post<ArenaMatchResponse>(`/api/arena/${matchId}/rematch`);
+}
+
+export function cancelRematch(matchId: number): Promise<ArenaMatchResponse> {
+  return post<ArenaMatchResponse>(`/api/arena/${matchId}/rematch/cancel`);
+}
+
