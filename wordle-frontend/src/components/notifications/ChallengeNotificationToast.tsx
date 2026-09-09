@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { stompManager } from "@/lib/socket/stomp-client";
 import { useAuthStore } from "@/stores/auth-store";
 import { ChallengeEventDto } from "@/types/api";
 import { Avatar } from "@/components/ui/Avatar";
-import { respondToChallenge } from "@/lib/api/arena";
+import { respondToChallenge, getPendingChallenges } from "@/lib/api/arena";
 import { Swords, Check, X, Loader2 } from "lucide-react";
 
 export function ChallengeNotificationToast() {
@@ -15,6 +15,7 @@ export function ChallengeNotificationToast() {
   const token = useAuthStore((s) => s.token);
   const [activeChallenge, setActiveChallenge] = useState<ChallengeEventDto | null>(null);
   const [isResponding, setIsResponding] = useState(false);
+  const dismissedMatchIdsRef = useRef<Set<number>>(new Set());
 
   useEffect(() => {
     if (!user?.username) return;
@@ -24,16 +25,42 @@ export function ChallengeNotificationToast() {
       stompManager.connect(token);
     }
 
+    // 1. WebSocket real-time subscription
     const unsubscribe = stompManager.subscribeToUserChallenges(user.username, (event) => {
       if (event.type === "CHALLENGE_RECEIVED") {
-        setActiveChallenge(event);
+        if (!dismissedMatchIdsRef.current.has(event.matchId)) {
+          setActiveChallenge(event);
+        }
       } else if (event.type === "CHALLENGE_CANCELLED") {
         setActiveChallenge((prev) => (prev?.matchId === event.matchId ? null : prev));
       }
     });
 
+    // 2. Periodic polling backup (every 4s) to guarantee zero missed challenges
+    const checkPending = async () => {
+      try {
+        const pending = await getPendingChallenges();
+        if (pending && pending.length > 0) {
+          const fresh = pending.find((c) => !dismissedMatchIdsRef.current.has(c.matchId));
+          if (fresh) {
+            setActiveChallenge((prev) => (prev?.matchId === fresh.matchId ? prev : fresh));
+          } else {
+            setActiveChallenge(null);
+          }
+        } else {
+          setActiveChallenge(null);
+        }
+      } catch {
+        // ignore background poll errors
+      }
+    };
+
+    checkPending();
+    const pollTimer = setInterval(checkPending, 4000);
+
     return () => {
       unsubscribe();
+      clearInterval(pollTimer);
     };
   }, [user?.username, token]);
 
@@ -41,6 +68,9 @@ export function ChallengeNotificationToast() {
   useEffect(() => {
     if (!activeChallenge) return;
     const timer = setTimeout(() => {
+      if (activeChallenge) {
+        dismissedMatchIdsRef.current.add(activeChallenge.matchId);
+      }
       setActiveChallenge(null);
     }, 30000);
     return () => clearTimeout(timer);
@@ -67,6 +97,7 @@ export function ChallengeNotificationToast() {
     if (isResponding) return;
     try {
       setIsResponding(true);
+      dismissedMatchIdsRef.current.add(activeChallenge.matchId);
       await respondToChallenge(activeChallenge.matchId, false);
     } catch {
       // Ignore

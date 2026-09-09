@@ -165,6 +165,18 @@ export default function ArenaMatchPage({
     }
   };
 
+  // Auto-redirect to arena when opponent leaves the lobby
+  useEffect(() => {
+    if (opponentLeftLobby && isPrivateMatch) {
+      const exitTimer = setTimeout(() => {
+        if (mounted.current) {
+          router.push("/arena");
+        }
+      }, 2500);
+      return () => clearTimeout(exitTimer);
+    }
+  }, [opponentLeftLobby, isPrivateMatch, router]);
+
   const handleCancelMatch = async () => {
     try {
       setIsCancelling(true);
@@ -447,23 +459,56 @@ export default function ArenaMatchPage({
 
   // Polling for match state changes
   useEffect(() => {
-    if (match?.status === "WAITING" || match?.status === "IN_PROGRESS") {
+    // Poll during WAITING, IN_PROGRESS, or in private matches while terminal to handle rematch/leave
+    const shouldPoll =
+      match?.status === "WAITING" ||
+      match?.status === "IN_PROGRESS" ||
+      (isPrivateMatch && !opponentLeftLobby && match?.status !== "CANCELLED");
+
+    if (shouldPoll) {
       if (pollInterval.current) clearInterval(pollInterval.current);
 
-      const intervalMs = match.status === "WAITING" ? 2500 : 3500;
+      const intervalMs =
+        match?.status === "WAITING"
+          ? 2500
+          : isTerminal(match?.status ?? "WAITING")
+          ? 2500
+          : 3500;
 
       pollInterval.current = setInterval(async () => {
         try {
           const updatedMatch = await getMatch(matchIdNum);
           if (!mounted.current) return;
 
-          const isSpec = updatedMatch.player1 !== username && updatedMatch.player2 !== username;
+          // Rematch accepted by both -> navigate together to next match
+          if (updatedMatch.nextMatchId) {
+            clearAllTimers();
+            router.push(`/arena/${updatedMatch.nextMatchId}`);
+            return;
+          }
+
+          // Opponent left lobby / closed room
+          if (
+            updatedMatch.lobbyClosed ||
+            (updatedMatch.playerLeft && updatedMatch.playerLeft !== username)
+          ) {
+            setOpponentLeftLobby(true);
+            setIsRequestingRematch(false);
+            setMatch(updatedMatch);
+            return;
+          }
+
+          const isSpec =
+            updatedMatch.player1 !== username &&
+            updatedMatch.player2 !== username;
 
           if (isSpec) {
-            const totalAttempts = updatedMatch.player1Attempts + updatedMatch.player2Attempts;
+            const totalAttempts =
+              updatedMatch.player1Attempts + updatedMatch.player2Attempts;
             if (
               totalAttempts > opponentGuessesCountRef.current ||
-              (match.status === "WAITING" && updatedMatch.status === "IN_PROGRESS") ||
+              (match?.status === "WAITING" &&
+                updatedMatch.status === "IN_PROGRESS") ||
               isTerminal(updatedMatch.status)
             ) {
               opponentGuessesCountRef.current = totalAttempts;
@@ -482,7 +527,8 @@ export default function ArenaMatchPage({
             // If opponent submitted a new guess OR match transitioned to IN_PROGRESS
             if (
               oppAttempts > opponentGuessesCountRef.current ||
-              (match.status === "WAITING" && updatedMatch.status === "IN_PROGRESS")
+              (match?.status === "WAITING" &&
+                updatedMatch.status === "IN_PROGRESS")
             ) {
               opponentGuessesCountRef.current = oppAttempts;
               const detailsRes = await getMatchDetails(matchIdNum);
@@ -498,7 +544,9 @@ export default function ArenaMatchPage({
           setMatch(updatedMatch);
 
           if (isTerminal(updatedMatch.status)) {
-            clearAllTimers();
+            if (!isPrivateMatch) {
+              clearAllTimers();
+            }
             const detailsRes = await getMatchDetails(matchIdNum);
             if (!mounted.current) return;
             setMatchDetails(detailsRes);
@@ -525,7 +573,7 @@ export default function ArenaMatchPage({
       if (pollInterval.current) clearInterval(pollInterval.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [match?.status, matchIdNum, username]);
+  }, [match?.status, matchIdNum, username, isPrivateMatch, opponentLeftLobby]);
 
   // Terminal polling in private match to detect rematch requests and nextMatchId
   useEffect(() => {
@@ -541,6 +589,18 @@ export default function ArenaMatchPage({
         const updatedMatch = await getMatch(matchIdNum);
         if (!mounted.current) return;
         setMatch(updatedMatch);
+
+        // Check if opponent left lobby / closed room
+        if (
+          updatedMatch.lobbyClosed ||
+          (updatedMatch.playerLeft && updatedMatch.playerLeft !== username)
+        ) {
+          setOpponentLeftLobby(true);
+          setIsRequestingRematch(false);
+          clearInterval(interval);
+          return;
+        }
+
         if (updatedMatch.nextMatchId) {
           clearInterval(interval);
           clearAllTimers();
@@ -552,7 +612,7 @@ export default function ArenaMatchPage({
     }, 2000);
 
     return () => clearInterval(interval);
-  }, [match?.status, isPrivateMatch, isSpectator, matchIdNum, router, match?.nextMatchId, clearAllTimers]);
+  }, [match?.status, isPrivateMatch, isSpectator, matchIdNum, router, match?.nextMatchId, clearAllTimers, username]);
 
   // WAITING timeout countdown (only for actual participants)
   useEffect(() => {
@@ -1115,19 +1175,20 @@ export default function ArenaMatchPage({
 
                 {/* Opponent left lobby notification */}
                 {isPrivateMatch && !isSpectator && opponentLeftLobby && (
-                  <div className="w-full mt-1 mb-3 p-2.5 bg-pastel-pink border-2 border-border rounded-sm shadow-brutal-sm text-xs font-display font-black text-border text-center flex items-center justify-center gap-1.5">
-                    <LogOut className="w-3.5 h-3.5" />
-                    <span>{opponentName || "Opponent"} left the lobby.</span>
+                  <div className="w-full mt-1 mb-3 p-3 bg-pastel-pink border-2 border-border rounded-sm shadow-brutal-sm text-xs sm:text-sm font-display font-black text-border text-center flex items-center justify-center gap-2 animate-pulse">
+                    <LogOut className="w-4 h-4" />
+                    <span>{opponentName || "Opponent"} left the lobby. Returning to Arena in 2s...</span>
                   </div>
                 )}
 
                 <div className="flex flex-wrap items-center justify-center gap-3 mt-3 w-full">
                   {isPrivateMatch && !isSpectator && opponentLeftLobby ? (
                     <button
-                      disabled
-                      className="btn-brutal bg-gray-200 px-6 py-2.5 font-bold text-border/50 text-sm shadow-brutal-sm cursor-not-allowed"
+                      onClick={() => router.push("/arena")}
+                      className="btn-brutal bg-pastel-pink px-6 py-2.5 font-bold text-border text-sm shadow-brutal-sm flex items-center gap-2 hover:bg-pastel-pink/90"
                     >
-                      Opponent Left
+                      <LogOut className="w-4 h-4" />
+                      Leave Now
                     </button>
                   ) : isPrivateMatch && !isSpectator && myRematchRequested ? (
                     <div className="flex items-center gap-2">

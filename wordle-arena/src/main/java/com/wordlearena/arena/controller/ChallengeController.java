@@ -5,9 +5,12 @@ import com.wordlearena.arena.dto.ChallengeResponseRequest;
 import com.wordlearena.arena.service.ArenaService;
 import com.wordlearena.user.entity.User;
 import com.wordlearena.user.repository.UserRepository;
+import com.wordlearena.websocket.dto.ChallengeEventDto;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/arena/challenge")
@@ -21,6 +24,16 @@ public class ChallengeController {
             UserRepository userRepository) {
         this.arenaService = arenaService;
         this.userRepository = userRepository;
+    }
+
+    @GetMapping("/pending")
+    public ResponseEntity<List<ChallengeEventDto>> getPendingChallenges(
+            Authentication authentication
+    ) {
+        User user = getAuthenticatedUser(authentication);
+        return ResponseEntity.ok(
+                arenaService.getPendingChallengesForUser(user)
+        );
     }
 
     @PostMapping("/{targetUsername}")

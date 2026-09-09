@@ -4,6 +4,7 @@ import type {
   ArenaMatchDetailsResponse,
   ArenaGuessRequest,
   ArenaGuessResponse,
+  ChallengeEventDto,
 } from "@/types/api";
 
 export function findMatch(): Promise<ArenaMatchResponse> {
@@ -79,6 +80,10 @@ export function respondToChallenge(
   return post<ArenaMatchResponse>(`/api/arena/challenge/${matchId}/respond`, {
     accept,
   });
+}
+
+export function getPendingChallenges(): Promise<ChallengeEventDto[]> {
+  return get<ChallengeEventDto[]>("/api/arena/challenge/pending");
 }
 
 

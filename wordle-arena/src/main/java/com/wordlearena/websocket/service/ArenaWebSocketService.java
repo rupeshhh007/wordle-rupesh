@@ -81,6 +81,9 @@ public class ArenaWebSocketService {
             messagingTemplate.convertAndSendToUser(targetUsername, "/queue/challenges", challenge);
             // Also send to topic destination for fallback (/topic/user/{targetUsername}/challenges)
             messagingTemplate.convertAndSend("/topic/user/" + targetUsername + "/challenges", challenge);
+            if (!targetUsername.equals(targetUsername.toLowerCase())) {
+                messagingTemplate.convertAndSend("/topic/user/" + targetUsername.toLowerCase() + "/challenges", challenge);
+            }
         } catch (Exception e) {
             System.err.println("Failed to send challenge notification to " + targetUsername + ": " + e.getMessage());
         }
@@ -94,6 +97,9 @@ public class ArenaWebSocketService {
         try {
             messagingTemplate.convertAndSendToUser(targetUsername, "/queue/challenges", response);
             messagingTemplate.convertAndSend("/topic/user/" + targetUsername + "/challenges", response);
+            if (!targetUsername.equals(targetUsername.toLowerCase())) {
+                messagingTemplate.convertAndSend("/topic/user/" + targetUsername.toLowerCase() + "/challenges", response);
+            }
         } catch (Exception e) {
             System.err.println("Failed to send challenge response to " + targetUsername + ": " + e.getMessage());
         }

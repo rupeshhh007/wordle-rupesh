@@ -77,6 +77,16 @@ public class ArenaMatch {
     @Column(nullable = false, columnDefinition = "boolean default false")
     private boolean rematchRequestedByPlayer2 = false;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "challenged_user_id")
+    private User challengedUser;
+
+    @Column(nullable = false, columnDefinition = "boolean default false")
+    private boolean lobbyClosed = false;
+
+    @Column(length = 64)
+    private String playerLeft;
+
     private Long nextMatchId;
 
     @Version
@@ -215,6 +225,30 @@ public class ArenaMatch {
 
     public void setNextMatchId(Long nextMatchId) {
         this.nextMatchId = nextMatchId;
+    }
+
+    public User getChallengedUser() {
+        return challengedUser;
+    }
+
+    public void setChallengedUser(User challengedUser) {
+        this.challengedUser = challengedUser;
+    }
+
+    public boolean isLobbyClosed() {
+        return lobbyClosed;
+    }
+
+    public void setLobbyClosed(boolean lobbyClosed) {
+        this.lobbyClosed = lobbyClosed;
+    }
+
+    public String getPlayerLeft() {
+        return playerLeft;
+    }
+
+    public void setPlayerLeft(String playerLeft) {
+        this.playerLeft = playerLeft;
     }
 
     public Long getVersion() {

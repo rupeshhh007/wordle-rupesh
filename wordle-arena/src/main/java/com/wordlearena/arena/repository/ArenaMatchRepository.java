@@ -156,4 +156,19 @@ public interface ArenaMatchRepository
             @Param("user") User user,
             @Param("statuses") Collection<ArenaMatchStatus> statuses
     );
+
+    /**
+     * Find active WAITING matches where the user was directly challenged.
+     */
+    @Query("""
+        SELECT m FROM ArenaMatch m
+        WHERE m.challengedUser = :user
+          AND m.status = 'WAITING'
+          AND m.createdAt > :cutoff
+        ORDER BY m.createdAt DESC
+    """)
+    List<ArenaMatch> findPendingChallengesForUser(
+            @Param("user") User user,
+            @Param("cutoff") LocalDateTime cutoff
+    );
 }

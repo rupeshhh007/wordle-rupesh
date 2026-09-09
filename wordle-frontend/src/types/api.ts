@@ -113,6 +113,8 @@ export interface ArenaMatchResponse {
   rematchRequestedByPlayer1?: boolean;
   rematchRequestedByPlayer2?: boolean;
   nextMatchId?: number | null;
+  lobbyClosed?: boolean;
+  playerLeft?: string;
 }
 
 export interface ArenaMatchDetailsResponse {
@@ -134,6 +136,8 @@ export interface ArenaMatchDetailsResponse {
   rematchRequestedByPlayer1?: boolean;
   rematchRequestedByPlayer2?: boolean;
   nextMatchId?: number | null;
+  lobbyClosed?: boolean;
+  playerLeft?: string;
 }
 
 export interface ArenaGuessResponse {

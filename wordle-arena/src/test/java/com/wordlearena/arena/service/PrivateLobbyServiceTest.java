@@ -340,5 +340,17 @@ class PrivateLobbyServiceTest {
         // Host then leaves lobby
         ArenaMatchResponse left = arenaService.leaveLobby(match.getId(), host);
         assertFalse(left.isRematchRequestedByPlayer1(), "Rematch flag should be reset when player leaves lobby");
+        assertTrue(left.isLobbyClosed(), "Lobby should be marked as closed");
+        assertEquals("hostUser", left.getPlayerLeft(), "Player who left should be recorded");
+    }
+
+    @Test
+    void leaveLobby_whenWaiting_cancelsMatch() {
+        User host = createUser(1L, "hostUser");
+        ArenaMatchResponse created = arenaService.createPrivateMatch(host);
+
+        ArenaMatchResponse left = arenaService.leaveLobby(created.getId(), host);
+        assertEquals(ArenaMatchStatus.CANCELLED, left.getStatus(), "WAITING match should be CANCELLED on leave");
+        assertTrue(left.isLobbyClosed());
     }
 }

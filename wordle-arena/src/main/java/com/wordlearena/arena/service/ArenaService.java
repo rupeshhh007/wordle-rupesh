@@ -770,6 +770,11 @@ public class ArenaService {
 
     @Transactional
     public ArenaMatchResponse createPrivateMatch(User user) {
+        return createPrivateMatch(user, null);
+    }
+
+    @Transactional
+    public ArenaMatchResponse createPrivateMatch(User user, User challengedUser) {
         // Cancel any existing WAITING private matches created by this user
         arenaMatchRepository.cancelWaitingPrivateMatchesForUser(user);
 
@@ -781,6 +786,7 @@ public class ArenaService {
 
         ArenaMatch match = new ArenaMatch();
         match.setPlayer1(user);
+        match.setChallengedUser(challengedUser);
         match.setWord(word);
         match.setStatus(ArenaMatchStatus.WAITING);
         match.setWinner(null);
@@ -974,12 +980,16 @@ public class ArenaService {
     public ArenaMatchResponse leaveLobby(Long matchId, User user) {
         ArenaMatch match = getMatchForUser(matchId, user);
 
-        // Reset rematch request for this user if active
-        boolean isPlayer1 = match.getPlayer1().getId().equals(user.getId());
-        if (isPlayer1) {
-            match.setRematchRequestedByPlayer1(false);
-        } else {
-            match.setRematchRequestedByPlayer2(false);
+        // Reset rematch request for BOTH users when someone leaves the lobby
+        match.setRematchRequestedByPlayer1(false);
+        match.setRematchRequestedByPlayer2(false);
+        match.setLobbyClosed(true);
+        match.setPlayerLeft(user.getUsername());
+
+        // If match is in WAITING status (e.g. host leaves private room), cancel it
+        if (match.getStatus() == ArenaMatchStatus.WAITING) {
+            match.setStatus(ArenaMatchStatus.CANCELLED);
+            match.setCompletedAt(LocalDateTime.now());
         }
 
         arenaMatchRepository.save(match);
@@ -1005,7 +1015,7 @@ public class ArenaService {
         User targetUser = userRepository.findByUsername(targetUsername)
                 .orElseThrow(() -> new IllegalArgumentException("Target user not found: " + targetUsername));
 
-        ArenaMatchResponse match = createPrivateMatch(challenger);
+        ArenaMatchResponse match = createPrivateMatch(challenger, targetUser);
 
         if (webSocketService != null) {
             ChallengeEventDto challengeEvent = ChallengeEventDto.builder()
@@ -1069,6 +1079,24 @@ public class ArenaService {
         }
     }
 
+    @Transactional(readOnly = true)
+    public List<ChallengeEventDto> getPendingChallengesForUser(User user) {
+        LocalDateTime cutoff = LocalDateTime.now().minusMinutes(2);
+        List<ArenaMatch> pending = arenaMatchRepository.findPendingChallengesForUser(user, cutoff);
+        return pending.stream()
+                .map(m -> ChallengeEventDto.builder()
+                        .type("CHALLENGE_RECEIVED")
+                        .challenger(m.getPlayer1().getUsername())
+                        .challengerRating(m.getPlayer1().getRating())
+                        .targetUser(user.getUsername())
+                        .matchId(m.getId())
+                        .inviteCode(m.getInviteCode())
+                        .message(m.getPlayer1().getUsername() + " challenged you to a 1v1 Arena Duel!")
+                        .timestamp(m.getCreatedAt().atZone(java.time.ZoneId.of("UTC")).toInstant().toEpochMilli())
+                        .build())
+                .toList();
+    }
+
     private ArenaMatchResponse toResponse(
             ArenaMatch match) {
 
@@ -1089,7 +1117,9 @@ public class ArenaService {
                 match.getInviteCode(),
                 match.isRematchRequestedByPlayer1(),
                 match.isRematchRequestedByPlayer2(),
-                match.getNextMatchId()
+                match.getNextMatchId(),
+                match.isLobbyClosed(),
+                match.getPlayerLeft()
         );
     }
 }
