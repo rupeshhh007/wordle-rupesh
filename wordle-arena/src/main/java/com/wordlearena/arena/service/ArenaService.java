@@ -178,6 +178,9 @@ public class ArenaService {
         ArenaMatch match =
                 getMatchForUser(matchId, user);
 
+        boolean isCompleted = isCompletedStatus(match.getStatus());
+        boolean isPlayer1 = match.getPlayer1().getId().equals(user.getId());
+
         List<ArenaGuessHistoryResponse> player1Guesses =
                 arenaGuessRepository
                         .findByMatchAndPlayerOrderByAttemptNumberAsc(
@@ -185,7 +188,7 @@ public class ArenaService {
                                 match.getPlayer1()
                         )
                         .stream()
-                        .map(this::toGuessHistoryResponse)
+                        .map(g -> toGuessHistoryResponse(g, !isPlayer1 && !isCompleted))
                         .toList();
 
         List<ArenaGuessHistoryResponse> player2Guesses =
@@ -197,7 +200,7 @@ public class ArenaService {
                                 match.getPlayer2()
                         )
                         .stream()
-                        .map(this::toGuessHistoryResponse)
+                        .map(g -> toGuessHistoryResponse(g, isPlayer1 && !isCompleted))
                         .toList();
 
         return new ArenaMatchDetailsResponse(
@@ -490,7 +493,8 @@ public class ArenaService {
     }
 
     private ArenaGuessHistoryResponse toGuessHistoryResponse(
-            ArenaGuess guess) {
+            ArenaGuess guess,
+            boolean maskWord) {
 
         String[] resultStrings =
                 guess.getResult().split(",");
@@ -509,7 +513,7 @@ public class ArenaService {
         }
 
         return new ArenaGuessHistoryResponse(
-                guess.getGuess(),
+                maskWord ? "" : guess.getGuess(),
                 results,
                 guess.getAttemptNumber()
         );

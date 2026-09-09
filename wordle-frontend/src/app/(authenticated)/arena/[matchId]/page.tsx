@@ -86,6 +86,7 @@ export default function ArenaMatchPage({
   const [remainingSeconds, setRemainingSeconds] = useState(WAITING_TIMEOUT_SECONDS);
 
   const mounted = useRef(true);
+  const opponentGuessesCountRef = useRef(0);
   const pollInterval = useRef<NodeJS.Timeout | null>(null);
   const waitingTimer = useRef<NodeJS.Timeout | null>(null);
 
@@ -177,6 +178,7 @@ export default function ArenaMatchPage({
 
       setMyGuesses(myGs);
       setOpponentGuesses(oppGs);
+      opponentGuessesCountRef.current = oppGs.length;
 
       // Build keyboard state
       const newKbState = new Map<string, LetterResult>();
@@ -234,10 +236,24 @@ export default function ArenaMatchPage({
           const updatedMatch = await getMatch(matchIdNum);
           if (!mounted.current) return;
 
-          if (match.status === "WAITING" && updatedMatch.status === "IN_PROGRESS") {
+          const p1 = updatedMatch.player1 === username;
+          const oppAttempts = p1
+            ? updatedMatch.player2Attempts
+            : updatedMatch.player1Attempts;
+
+          // If opponent submitted a new guess OR match transitioned to IN_PROGRESS
+          if (
+            oppAttempts > opponentGuessesCountRef.current ||
+            (match.status === "WAITING" && updatedMatch.status === "IN_PROGRESS")
+          ) {
+            opponentGuessesCountRef.current = oppAttempts;
             const detailsRes = await getMatchDetails(matchIdNum);
             if (!mounted.current) return;
             setMatchDetails(detailsRes);
+            const oppGs = p1
+              ? detailsRes.player2Guesses
+              : detailsRes.player1Guesses;
+            setOpponentGuesses(oppGs);
           }
 
           setMatch(updatedMatch);
@@ -247,11 +263,11 @@ export default function ArenaMatchPage({
             const detailsRes = await getMatchDetails(matchIdNum);
             if (!mounted.current) return;
             setMatchDetails(detailsRes);
-            const p1 = updatedMatch.player1 === username;
             const oppGs = p1
               ? detailsRes.player2Guesses
               : detailsRes.player1Guesses;
             setOpponentGuesses(oppGs);
+            opponentGuessesCountRef.current = oppGs.length;
             await fetchUpdatedRating();
           }
         } catch {
@@ -613,7 +629,10 @@ export default function ArenaMatchPage({
             </h3>
             <div className="flex justify-center transform scale-75 origin-top">
               <GameBoard
-                guesses={opponentGuesses.map(arenaToBoardGuess)}
+                guesses={opponentGuesses.map((g) => ({
+                  word: match?.status && isTerminal(match.status) ? g.guess : "",
+                  result: g.result,
+                }))}
                 currentGuess=""
                 isActive={false}
               />
