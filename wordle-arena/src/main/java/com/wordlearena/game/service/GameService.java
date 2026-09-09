@@ -1,5 +1,9 @@
 package com.wordlearena.game.service;
 
+import com.wordlearena.arena.entity.ArenaMatch;
+import com.wordlearena.arena.entity.ArenaMatchStatus;
+import com.wordlearena.arena.repository.ArenaGuessRepository;
+import com.wordlearena.arena.repository.ArenaMatchRepository;
 import com.wordlearena.game.dto.GameDetailsResponse;
 import com.wordlearena.game.dto.GameResponse;
 import com.wordlearena.game.dto.GuessResponse;
@@ -20,6 +24,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -29,17 +34,23 @@ public class GameService {
     private final WordRepository wordRepository;
     private final GuessRepository guessRepository;
     private final WordEvaluationService wordEvaluationService;
+    private final ArenaMatchRepository arenaMatchRepository;
+    private final ArenaGuessRepository arenaGuessRepository;
 
     public GameService(
             GameRepository gameRepository,
             WordRepository wordRepository,
             GuessRepository guessRepository,
-            WordEvaluationService wordEvaluationService) {
+            WordEvaluationService wordEvaluationService,
+            ArenaMatchRepository arenaMatchRepository,
+            ArenaGuessRepository arenaGuessRepository) {
 
         this.gameRepository = gameRepository;
         this.wordRepository = wordRepository;
         this.guessRepository = guessRepository;
         this.wordEvaluationService = wordEvaluationService;
+        this.arenaMatchRepository = arenaMatchRepository;
+        this.arenaGuessRepository = arenaGuessRepository;
     }
 
     @Transactional
@@ -200,40 +211,81 @@ public class GameService {
     @Transactional(readOnly = true)
     public GameDetailsResponse getGame(Long gameId, User user) {
 
-        Game game = gameRepository
-                .findByIdAndUser(gameId, user)
-                .orElseThrow(() ->
-                        new GameNotFoundException(
-                                "Game with id " + gameId + " does not exist"
-                        )
+        var regularGameOpt = gameRepository.findByIdAndUser(gameId, user);
+        if (regularGameOpt.isPresent()) {
+            Game game = regularGameOpt.get();
+            var guesses = guessRepository
+                    .findByGameOrderByAttemptNumberAsc(game);
+
+            var guessResponses = guesses.stream()
+                    .map(guess -> {
+                        LetterResult[] results = parseResult(guess.getResult());
+                        return new GuessResponse(
+                                guess.getGuess(),
+                                results,
+                                guess.getAttemptNumber(),
+                                game.getStatus()
+                        );
+                    })
+                    .toList();
+
+            return new GameDetailsResponse(
+                    game.getId(),
+                    game.getGameType(),
+                    game.getStatus(),
+                    game.getAttemptCount(),
+                    game.getStartedAt(),
+                    game.getCompletedAt(),
+                    guessResponses
+            );
+        }
+
+        // Check if gameId corresponds to an Arena match for this user
+        var arenaOpt = arenaMatchRepository.findById(gameId);
+        if (arenaOpt.isPresent()) {
+            ArenaMatch match = arenaOpt.get();
+            boolean isP1 = match.getPlayer1().getId().equals(user.getId());
+            boolean isP2 = match.getPlayer2() != null && match.getPlayer2().getId().equals(user.getId());
+
+            if (isP1 || isP2) {
+                GameStatus mappedStatus;
+                switch (match.getStatus()) {
+                    case PLAYER1_WON -> mappedStatus = isP1 ? GameStatus.WON : GameStatus.LOST;
+                    case PLAYER2_WON -> mappedStatus = isP1 ? GameStatus.LOST : GameStatus.WON;
+                    case DRAW -> mappedStatus = GameStatus.DRAW;
+                    case CANCELLED -> mappedStatus = GameStatus.ABANDONED;
+                    default -> mappedStatus = GameStatus.IN_PROGRESS;
+                }
+
+                int attempts = isP1 ? match.getPlayer1Attempts() : match.getPlayer2Attempts();
+                LocalDateTime started = match.getStartedAt() != null ? match.getStartedAt() : match.getCreatedAt();
+
+                var arenaGuesses = arenaGuessRepository
+                        .findByMatchAndPlayerOrderByAttemptNumberAsc(match, user);
+
+                var guessResponses = arenaGuesses.stream()
+                        .map(guess -> new GuessResponse(
+                                guess.getGuess(),
+                                parseResult(guess.getResult()),
+                                guess.getAttemptNumber(),
+                                mappedStatus
+                        ))
+                        .toList();
+
+                return new GameDetailsResponse(
+                        match.getId(),
+                        GameType.ARENA,
+                        mappedStatus,
+                        attempts,
+                        started,
+                        match.getCompletedAt(),
+                        guessResponses
                 );
+            }
+        }
 
-        var guesses = guessRepository
-                .findByGameOrderByAttemptNumberAsc(game);
-
-        var guessResponses = guesses.stream()
-                .map(guess -> {
-
-                    LetterResult[] results =
-                            parseResult(guess.getResult());
-
-                    return new GuessResponse(
-                            guess.getGuess(),
-                            results,
-                            guess.getAttemptNumber(),
-                            game.getStatus()
-                    );
-                })
-                .toList();
-
-        return new GameDetailsResponse(
-                game.getId(),
-                game.getGameType(),
-                game.getStatus(),
-                game.getAttemptCount(),
-                game.getStartedAt(),
-                game.getCompletedAt(),
-                guessResponses
+        throw new GameNotFoundException(
+                "Game with id " + gameId + " does not exist"
         );
     }
     private LetterResult[] parseResult(String result) {
@@ -253,7 +305,7 @@ public class GameService {
     @Transactional(readOnly = true)
     public List<GameResponse> getUserGames(User user) {
 
-        return gameRepository
+        List<GameResponse> regularGames = gameRepository
                 .findByUserOrderByStartedAtDesc(user)
                 .stream()
                 .map(game -> new GameResponse(
@@ -264,6 +316,50 @@ public class GameService {
                         game.getStartedAt()
                 ))
                 .toList();
+
+        List<GameResponse> arenaGames = arenaMatchRepository
+                .findMatchesForUser(user)
+                .stream()
+                .map(match -> {
+                    boolean isP1 = match.getPlayer1().getId().equals(user.getId());
+                    String opponentUsername = isP1
+                            ? (match.getPlayer2() != null ? match.getPlayer2().getUsername() : null)
+                            : match.getPlayer1().getUsername();
+
+                    GameStatus mappedStatus;
+                    switch (match.getStatus()) {
+                        case PLAYER1_WON -> mappedStatus = isP1 ? GameStatus.WON : GameStatus.LOST;
+                        case PLAYER2_WON -> mappedStatus = isP1 ? GameStatus.LOST : GameStatus.WON;
+                        case DRAW -> mappedStatus = GameStatus.DRAW;
+                        case CANCELLED -> mappedStatus = GameStatus.ABANDONED;
+                        default -> mappedStatus = GameStatus.IN_PROGRESS;
+                    }
+
+                    int attempts = isP1 ? match.getPlayer1Attempts() : match.getPlayer2Attempts();
+                    LocalDateTime started = match.getStartedAt() != null ? match.getStartedAt() : match.getCreatedAt();
+
+                    return new GameResponse(
+                            match.getId(),
+                            GameType.ARENA,
+                            mappedStatus,
+                            attempts,
+                            started,
+                            opponentUsername
+                    );
+                })
+                .toList();
+
+        List<GameResponse> allGames = new ArrayList<>(regularGames.size() + arenaGames.size());
+        allGames.addAll(regularGames);
+        allGames.addAll(arenaGames);
+        allGames.sort((a, b) -> {
+            if (a.getStartedAt() == null && b.getStartedAt() == null) return 0;
+            if (a.getStartedAt() == null) return 1;
+            if (b.getStartedAt() == null) return -1;
+            return b.getStartedAt().compareTo(a.getStartedAt());
+        });
+
+        return allGames;
     }
     @Transactional
     public GameResponse abandonGame(

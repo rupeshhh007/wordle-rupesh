@@ -100,4 +100,29 @@ public interface ArenaMatchRepository
             @Param("status") ArenaMatchStatus status,
             @Param("cutoff") LocalDateTime cutoff
     );
+
+    /**
+     * Find all non-WAITING arena matches for a user (for game history).
+     */
+    @Query("""
+        SELECT m FROM ArenaMatch m
+        WHERE (m.player1 = :user OR m.player2 = :user)
+          AND m.status <> 'WAITING'
+        ORDER BY COALESCE(m.startedAt, m.createdAt) DESC
+    """)
+    List<ArenaMatch> findMatchesForUser(@Param("user") User user);
+
+    /**
+     * Find all finished/completed arena matches for a user (for stats calculation).
+     */
+    @Query("""
+        SELECT m FROM ArenaMatch m
+        WHERE (m.player1 = :user OR m.player2 = :user)
+          AND m.status IN :statuses
+        ORDER BY m.completedAt ASC
+    """)
+    List<ArenaMatch> findCompletedMatchesForUser(
+            @Param("user") User user,
+            @Param("statuses") Collection<ArenaMatchStatus> statuses
+    );
 }

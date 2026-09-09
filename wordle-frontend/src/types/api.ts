@@ -2,7 +2,7 @@
 
 export type GameType = "DAILY" | "PRACTICE" | "ARENA";
 
-export type GameStatus = "IN_PROGRESS" | "WON" | "LOST" | "ABANDONED";
+export type GameStatus = "IN_PROGRESS" | "WON" | "LOST" | "ABANDONED" | "DRAW";
 
 export type LetterResult = "CORRECT" | "PRESENT" | "ABSENT";
 
@@ -53,6 +53,7 @@ export interface GameResponse {
   status: GameStatus;
   attemptCount: number;
   startedAt: string;
+  opponentUsername?: string;
 }
 
 export interface GameDetailsResponse {

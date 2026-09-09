@@ -25,6 +25,11 @@ public interface WordRepository extends JpaRepository<Word, Long> {
 
     @Modifying
     @Transactional
+    @Query("UPDATE Word w SET w.answerEligible = false WHERE w.answerEligible = true")
+    int resetAllAnswerEligibility();
+
+    @Modifying
+    @Transactional
     @Query("UPDATE Word w SET w.answerEligible = true WHERE w.word IN :words AND w.answerEligible = false")
     int markWordsAsAnswerEligible(@Param("words") Collection<String> words);
 

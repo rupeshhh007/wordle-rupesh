@@ -14,6 +14,7 @@ const STATUS_LABELS: Record<string, string> = {
   WON: "Won",
   LOST: "Lost",
   ABANDONED: "Abandoned",
+  DRAW: "Draw",
 };
 
 const TYPE_LABELS: Record<string, string> = {
@@ -92,21 +93,33 @@ export default function GameDetailPage({
 
       {/* Game Info Card */}
       <div className="card-brutal p-6">
-        <div className="flex flex-wrap items-center gap-3 mb-4">
-          <span className="px-3 py-1 rounded-full text-sm font-display font-bold border-2 border-border bg-pastel-blue">
-            {TYPE_LABELS[game.gameType] || game.gameType}
-          </span>
-          <span
-            className={`px-3 py-1 rounded-full text-sm font-display font-bold border-2 border-border ${
-              game.status === "WON"
-                ? "bg-correct text-white"
-                : game.status === "LOST"
-                ? "bg-danger text-white"
-                : "bg-pastel-yellow"
-            }`}
-          >
-            {STATUS_LABELS[game.status] || game.status}
-          </span>
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <div className="flex items-center gap-2">
+            <span className="px-3 py-1 rounded-full text-sm font-display font-bold border-2 border-border bg-pastel-blue">
+              {TYPE_LABELS[game.gameType] || game.gameType}
+            </span>
+            <span
+              className={`px-3 py-1 rounded-full text-sm font-display font-bold border-2 border-border ${
+                game.status === "WON"
+                  ? "bg-correct text-white"
+                  : game.status === "LOST"
+                  ? "bg-danger text-white"
+                  : game.status === "DRAW"
+                  ? "bg-pastel-purple text-border"
+                  : "bg-pastel-yellow"
+              }`}
+            >
+              {STATUS_LABELS[game.status] || game.status}
+            </span>
+          </div>
+          {game.gameType === "ARENA" && (
+            <Link
+              href={`/arena/${game.id}`}
+              className="btn-brutal bg-pastel-pink px-4 py-1.5 text-xs font-bold text-border shadow-brutal-sm"
+            >
+              View 1v1 Arena Duel
+            </Link>
+          )}
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm">

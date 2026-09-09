@@ -188,7 +188,7 @@ public class DataSeeder {
         Set<String> answerWords = loadWords("answers.txt");
         long currentAnswerCount = wordRepository.countByAnswerEligibleTrue();
 
-        if (currentAnswerCount >= answerWords.size()) {
+        if (currentAnswerCount == answerWords.size()) {
             System.out.println(
                     "Word dictionary already contains "
                             + existingWords
@@ -200,6 +200,8 @@ public class DataSeeder {
         }
 
         System.out.println("Synchronizing " + answerWords.size() + " answer eligible words (current: " + currentAnswerCount + ")...");
+
+        wordRepository.resetAllAnswerEligibility();
 
         List<String> answerList = new ArrayList<>(answerWords);
         int batchSize = 500;
@@ -214,7 +216,7 @@ public class DataSeeder {
         System.out.println(
                 "Answer eligibility sync complete. Marked "
                         + updatedTotal
-                        + " newly eligible words. Total answer words now: "
+                        + " words as answer-eligible. Total answer words now: "
                         + newAnswerCount
         );
     }

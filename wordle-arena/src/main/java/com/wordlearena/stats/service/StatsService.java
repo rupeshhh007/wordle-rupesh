@@ -1,5 +1,8 @@
 package com.wordlearena.stats.service;
 
+import com.wordlearena.arena.entity.ArenaMatch;
+import com.wordlearena.arena.entity.ArenaMatchStatus;
+import com.wordlearena.arena.repository.ArenaMatchRepository;
 import com.wordlearena.game.entity.Game;
 import com.wordlearena.game.entity.GameStatus;
 import com.wordlearena.game.entity.GameType;
@@ -10,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -19,9 +23,13 @@ import java.util.Map;
 public class StatsService {
 
     private final GameRepository gameRepository;
+    private final ArenaMatchRepository arenaMatchRepository;
 
-    public StatsService(GameRepository gameRepository) {
+    public StatsService(
+            GameRepository gameRepository,
+            ArenaMatchRepository arenaMatchRepository) {
         this.gameRepository = gameRepository;
+        this.arenaMatchRepository = arenaMatchRepository;
     }
 
     @Transactional(readOnly = true)
@@ -39,24 +47,64 @@ public class StatsService {
                         GameStatus.LOST
                 );
 
-        long wins = wonGames.size();
-        long losses = lostGames.size();
-        long gamesPlayed = wins + losses;
+        List<ArenaMatch> completedArenaMatches =
+                arenaMatchRepository.findCompletedMatchesForUser(
+                        user,
+                        List.of(
+                                ArenaMatchStatus.PLAYER1_WON,
+                                ArenaMatchStatus.PLAYER2_WON,
+                                ArenaMatchStatus.DRAW
+                        )
+                );
 
-        double winRate = gamesPlayed == 0
+        long arenaWins = 0;
+        long arenaLosses = 0;
+        long arenaDraws = 0;
+        List<Integer> arenaWonAttempts = new ArrayList<>();
+
+        for (ArenaMatch match : completedArenaMatches) {
+            boolean isP1 = match.getPlayer1().getId().equals(user.getId());
+            boolean isP2 = match.getPlayer2() != null && match.getPlayer2().getId().equals(user.getId());
+
+            if (!isP1 && !isP2) continue;
+
+            if (match.getStatus() == ArenaMatchStatus.PLAYER1_WON) {
+                if (isP1) {
+                    arenaWins++;
+                    arenaWonAttempts.add(match.getPlayer1Attempts());
+                } else {
+                    arenaLosses++;
+                }
+            } else if (match.getStatus() == ArenaMatchStatus.PLAYER2_WON) {
+                if (isP2) {
+                    arenaWins++;
+                    arenaWonAttempts.add(match.getPlayer2Attempts());
+                } else {
+                    arenaLosses++;
+                }
+            } else if (match.getStatus() == ArenaMatchStatus.DRAW) {
+                arenaDraws++;
+            }
+        }
+
+        long totalWins = wonGames.size() + arenaWins;
+        long totalLosses = lostGames.size() + arenaLosses;
+        long totalGamesPlayed = totalWins + totalLosses + arenaDraws;
+
+        double winRate = totalGamesPlayed == 0
                 ? 0.0
-                : (wins * 100.0) / gamesPlayed;
+                : (totalWins * 100.0) / totalGamesPlayed;
 
         Map<Integer, Long> guessDistribution =
-                buildGuessDistribution(wonGames);
+                buildGuessDistribution(wonGames, arenaWonAttempts);
 
         DailyStreakResult streak =
                 calculateDailyStreaks(user);
 
         return new StatsResponse(
-                gamesPlayed,
-                wins,
-                losses,
+                totalGamesPlayed,
+                totalWins,
+                totalLosses,
                 Math.round(winRate * 100.0) / 100.0,
                 streak.currentStreak(),
                 streak.bestStreak(),
@@ -65,7 +113,8 @@ public class StatsService {
     }
 
     private Map<Integer, Long> buildGuessDistribution(
-            List<Game> wonGames
+            List<Game> wonGames,
+            List<Integer> arenaWonAttempts
     ) {
         Map<Integer, Long> distribution =
                 new LinkedHashMap<>();
@@ -78,6 +127,15 @@ public class StatsService {
 
             int attempts = game.getAttemptCount();
 
+            if (attempts >= 1 && attempts <= 6) {
+                distribution.put(
+                        attempts,
+                        distribution.get(attempts) + 1
+                );
+            }
+        }
+
+        for (int attempts : arenaWonAttempts) {
             if (attempts >= 1 && attempts <= 6) {
                 distribution.put(
                         attempts,

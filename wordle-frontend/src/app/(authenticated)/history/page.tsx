@@ -24,6 +24,7 @@ const STATUS_LABELS: Record<GameStatus, string> = {
   WON: "Won",
   LOST: "Lost",
   ABANDONED: "Abandoned",
+  DRAW: "Draw",
 };
 
 const STATUS_COLORS: Record<GameStatus, string> = {
@@ -31,6 +32,7 @@ const STATUS_COLORS: Record<GameStatus, string> = {
   WON: "bg-correct text-white",
   LOST: "bg-danger text-white",
   ABANDONED: "bg-absent text-white",
+  DRAW: "bg-pastel-purple text-border",
 };
 
 function formatDate(dateStr: string): string {
@@ -94,34 +96,44 @@ export default function HistoryPage() {
         </div>
       ) : (
         <div className="space-y-3">
-          {games.map((game) => (
-            <Link
-              key={game.id}
-              href={`/history/${game.id}`}
-              className="card-brutal card-interactive p-4 flex items-center justify-between block"
-            >
-              <div className="flex items-center gap-3">
-                <span
-                  className={`px-2.5 py-0.5 rounded-full text-xs font-display font-bold border-2 border-border ${TYPE_COLORS[game.gameType]}`}
-                >
-                  {TYPE_LABELS[game.gameType]}
-                </span>
-                <span
-                  className={`px-2.5 py-0.5 rounded-full text-xs font-display font-bold border-2 border-border ${STATUS_COLORS[game.status]}`}
-                >
-                  {STATUS_LABELS[game.status]}
-                </span>
-              </div>
-              <div className="flex items-center gap-4 text-sm text-text-secondary">
-                <span className="font-display font-semibold">
-                  {game.attemptCount}/6
-                </span>
-                <span className="font-body hidden sm:inline">
-                  {formatDate(game.startedAt)}
-                </span>
-              </div>
-            </Link>
-          ))}
+          {games.map((game) => {
+            const isArena = game.gameType === "ARENA";
+            const targetHref = isArena ? `/arena/${game.id}` : `/history/${game.id}`;
+
+            return (
+              <Link
+                key={`${game.gameType}-${game.id}`}
+                href={targetHref}
+                className="card-brutal card-interactive p-4 flex items-center justify-between block"
+              >
+                <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                  <span
+                    className={`px-2.5 py-0.5 rounded-full text-xs font-display font-bold border-2 border-border ${TYPE_COLORS[game.gameType]}`}
+                  >
+                    {TYPE_LABELS[game.gameType]}
+                  </span>
+                  <span
+                    className={`px-2.5 py-0.5 rounded-full text-xs font-display font-bold border-2 border-border ${STATUS_COLORS[game.status]}`}
+                  >
+                    {STATUS_LABELS[game.status]}
+                  </span>
+                  {isArena && game.opponentUsername && (
+                    <span className="px-2 py-0.5 rounded-sm text-xs font-display font-bold bg-pastel-pink/70 border border-border text-border">
+                      vs {game.opponentUsername}
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-4 text-sm text-text-secondary">
+                  <span className="font-display font-semibold">
+                    {game.status === "DRAW" ? "Draw" : `${game.attemptCount}/6`}
+                  </span>
+                  <span className="font-body hidden sm:inline">
+                    {formatDate(game.startedAt)}
+                  </span>
+                </div>
+              </Link>
+            );
+          })}
         </div>
       )}
     </div>
