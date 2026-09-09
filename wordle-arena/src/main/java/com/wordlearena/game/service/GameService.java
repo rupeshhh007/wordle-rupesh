@@ -45,7 +45,8 @@ public class GameService {
     @Transactional
     public Game startGame(User user, GameType gameType) {
 
-        Word word = wordRepository.findRandomActiveWord()
+        Word word = wordRepository.findRandomAnswerEligibleWord()
+                .or(wordRepository::findRandomActiveWord)
                 .orElseThrow(() -> new IllegalStateException("No active words available"));
         Game game = new Game();
 

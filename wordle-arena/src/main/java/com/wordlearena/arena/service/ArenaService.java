@@ -208,8 +208,8 @@ public class ArenaService {
         boolean isPlayer2 = match.getPlayer2() != null && match.getPlayer2().getId().equals(user.getId());
         boolean isSpectator = !isPlayer1 && !isPlayer2;
 
-        boolean maskP1 = isSpectator ? !isCompleted : (!isPlayer1 && !isCompleted);
-        boolean maskP2 = isSpectator ? !isCompleted : (!isPlayer2 && !isCompleted);
+        boolean maskP1 = !isSpectator && !isPlayer1 && !isCompleted;
+        boolean maskP2 = !isSpectator && !isPlayer2 && !isCompleted;
 
         List<ArenaGuessHistoryResponse> player1Guesses =
                 arenaGuessRepository

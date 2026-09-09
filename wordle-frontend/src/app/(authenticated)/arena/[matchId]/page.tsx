@@ -648,7 +648,7 @@ export default function ArenaMatchPage({
             <div className="flex justify-center">
               <GameBoard
                 guesses={p1Guesses.map((g) => ({
-                  word: isCompleted ? g.guess : "",
+                  word: g.guess,
                   result: g.result,
                 }))}
                 currentGuess=""
@@ -687,7 +687,7 @@ export default function ArenaMatchPage({
             <div className="flex justify-center">
               <GameBoard
                 guesses={p2Guesses.map((g) => ({
-                  word: isCompleted ? g.guess : "",
+                  word: g.guess,
                   result: g.result,
                 }))}
                 currentGuess=""

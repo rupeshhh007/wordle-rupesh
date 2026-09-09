@@ -28,13 +28,7 @@ public class DataSeeder {
             long existingWords = wordRepository.count();
 
             if (existingWords > 0) {
-
-                System.out.println(
-                        "Word dictionary already contains "
-                                + existingWords
-                                + " words. Skipping seed."
-                );
-
+                syncAnswerEligibleWords(wordRepository, existingWords);
                 return;
             }
 
@@ -187,5 +181,41 @@ public class DataSeeder {
         }
 
         return words;
+    }
+
+    private void syncAnswerEligibleWords(WordRepository wordRepository, long existingWords) {
+
+        Set<String> answerWords = loadWords("answers.txt");
+        long currentAnswerCount = wordRepository.countByAnswerEligibleTrue();
+
+        if (currentAnswerCount >= answerWords.size()) {
+            System.out.println(
+                    "Word dictionary already contains "
+                            + existingWords
+                            + " words and "
+                            + currentAnswerCount
+                            + " answer words. Skipping seed."
+            );
+            return;
+        }
+
+        System.out.println("Synchronizing " + answerWords.size() + " answer eligible words (current: " + currentAnswerCount + ")...");
+
+        List<String> answerList = new ArrayList<>(answerWords);
+        int batchSize = 500;
+        int updatedTotal = 0;
+
+        for (int i = 0; i < answerList.size(); i += batchSize) {
+            List<String> batch = answerList.subList(i, Math.min(i + batchSize, answerList.size()));
+            updatedTotal += wordRepository.markWordsAsAnswerEligible(batch);
+        }
+
+        long newAnswerCount = wordRepository.countByAnswerEligibleTrue();
+        System.out.println(
+                "Answer eligibility sync complete. Marked "
+                        + updatedTotal
+                        + " newly eligible words. Total answer words now: "
+                        + newAnswerCount
+        );
     }
 }
