@@ -20,6 +20,7 @@ import com.wordlearena.user.entity.User;
 import com.wordlearena.user.repository.UserRepository;
 import com.wordlearena.websocket.dto.ChallengeEventDto;
 import com.wordlearena.websocket.service.ArenaWebSocketService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -58,6 +59,7 @@ public class ArenaService {
     private final UserRepository userRepository;
     private final ArenaWebSocketService webSocketService;
 
+    @Autowired
     public ArenaService(
             ArenaMatchRepository arenaMatchRepository,
             ArenaGuessRepository arenaGuessRepository,
