@@ -25,7 +25,7 @@ import { useGameInput } from "@/hooks/useGameInput";
 import { useAuthStore } from "@/stores/auth-store";
 import { LoadingState } from "@/components/ui/LoadingState";
 import { Avatar } from "@/components/ui/Avatar";
-import { Flag } from "lucide-react";
+import { Flag, Eye, ArrowLeft } from "lucide-react";
 
 /** Max seconds to wait in WAITING state before auto-cancelling. */
 const WAITING_TIMEOUT_SECONDS = 180;
@@ -142,6 +142,7 @@ export default function ArenaMatchPage({
   };
 
   const isPlayer1 = match?.player1 === username;
+  const isSpectator = !!match && match.player1 !== username && match.player2 !== username;
   const myAttempts = isPlayer1 ? match?.player1Attempts : match?.player2Attempts;
   const opponentAttempts = isPlayer1
     ? match?.player2Attempts
@@ -173,33 +174,41 @@ export default function ArenaMatchPage({
       setMatchDetails(detailsRes);
 
       const p1 = matchRes.player1 === username;
-      const myGs = p1 ? detailsRes.player1Guesses : detailsRes.player2Guesses;
-      const oppGs = p1 ? detailsRes.player2Guesses : detailsRes.player1Guesses;
+      const isSpec = matchRes.player1 !== username && matchRes.player2 !== username;
 
-      setMyGuesses(myGs);
-      setOpponentGuesses(oppGs);
-      opponentGuessesCountRef.current = oppGs.length;
+      if (isSpec) {
+        setMyGuesses(detailsRes.player1Guesses);
+        setOpponentGuesses(detailsRes.player2Guesses);
+        opponentGuessesCountRef.current = matchRes.player1Attempts + matchRes.player2Attempts;
+      } else {
+        const myGs = p1 ? detailsRes.player1Guesses : detailsRes.player2Guesses;
+        const oppGs = p1 ? detailsRes.player2Guesses : detailsRes.player1Guesses;
 
-      // Build keyboard state
-      const newKbState = new Map<string, LetterResult>();
-      myGs.forEach((g) => {
-        for (let i = 0; i < g.guess.length; i++) {
-          const letter = g.guess[i];
-          const result = g.result[i] as LetterResult;
-          const existing = newKbState.get(letter);
-          if (!existing) {
-            newKbState.set(letter, result);
-          } else if (existing !== "CORRECT") {
-            if (
-              result === "CORRECT" ||
-              (existing === "ABSENT" && result === "PRESENT")
-            ) {
+        setMyGuesses(myGs);
+        setOpponentGuesses(oppGs);
+        opponentGuessesCountRef.current = oppGs.length;
+
+        // Build keyboard state
+        const newKbState = new Map<string, LetterResult>();
+        myGs.forEach((g) => {
+          for (let i = 0; i < g.guess.length; i++) {
+            const letter = g.guess[i];
+            const result = g.result[i] as LetterResult;
+            const existing = newKbState.get(letter);
+            if (!existing) {
               newKbState.set(letter, result);
+            } else if (existing !== "CORRECT") {
+              if (
+                result === "CORRECT" ||
+                (existing === "ABSENT" && result === "PRESENT")
+              ) {
+                newKbState.set(letter, result);
+              }
             }
           }
-        }
-      });
-      setKeyboardState(newKbState);
+        });
+        setKeyboardState(newKbState);
+      }
 
       if (isTerminal(matchRes.status)) {
         await fetchUpdatedRating();
@@ -236,24 +245,42 @@ export default function ArenaMatchPage({
           const updatedMatch = await getMatch(matchIdNum);
           if (!mounted.current) return;
 
-          const p1 = updatedMatch.player1 === username;
-          const oppAttempts = p1
-            ? updatedMatch.player2Attempts
-            : updatedMatch.player1Attempts;
+          const isSpec = updatedMatch.player1 !== username && updatedMatch.player2 !== username;
 
-          // If opponent submitted a new guess OR match transitioned to IN_PROGRESS
-          if (
-            oppAttempts > opponentGuessesCountRef.current ||
-            (match.status === "WAITING" && updatedMatch.status === "IN_PROGRESS")
-          ) {
-            opponentGuessesCountRef.current = oppAttempts;
-            const detailsRes = await getMatchDetails(matchIdNum);
-            if (!mounted.current) return;
-            setMatchDetails(detailsRes);
-            const oppGs = p1
-              ? detailsRes.player2Guesses
-              : detailsRes.player1Guesses;
-            setOpponentGuesses(oppGs);
+          if (isSpec) {
+            const totalAttempts = updatedMatch.player1Attempts + updatedMatch.player2Attempts;
+            if (
+              totalAttempts > opponentGuessesCountRef.current ||
+              (match.status === "WAITING" && updatedMatch.status === "IN_PROGRESS") ||
+              isTerminal(updatedMatch.status)
+            ) {
+              opponentGuessesCountRef.current = totalAttempts;
+              const detailsRes = await getMatchDetails(matchIdNum);
+              if (!mounted.current) return;
+              setMatchDetails(detailsRes);
+              setMyGuesses(detailsRes.player1Guesses);
+              setOpponentGuesses(detailsRes.player2Guesses);
+            }
+          } else {
+            const p1 = updatedMatch.player1 === username;
+            const oppAttempts = p1
+              ? updatedMatch.player2Attempts
+              : updatedMatch.player1Attempts;
+
+            // If opponent submitted a new guess OR match transitioned to IN_PROGRESS
+            if (
+              oppAttempts > opponentGuessesCountRef.current ||
+              (match.status === "WAITING" && updatedMatch.status === "IN_PROGRESS")
+            ) {
+              opponentGuessesCountRef.current = oppAttempts;
+              const detailsRes = await getMatchDetails(matchIdNum);
+              if (!mounted.current) return;
+              setMatchDetails(detailsRes);
+              const oppGs = p1
+                ? detailsRes.player2Guesses
+                : detailsRes.player1Guesses;
+              setOpponentGuesses(oppGs);
+            }
           }
 
           setMatch(updatedMatch);
@@ -263,12 +290,18 @@ export default function ArenaMatchPage({
             const detailsRes = await getMatchDetails(matchIdNum);
             if (!mounted.current) return;
             setMatchDetails(detailsRes);
-            const oppGs = p1
-              ? detailsRes.player2Guesses
-              : detailsRes.player1Guesses;
-            setOpponentGuesses(oppGs);
-            opponentGuessesCountRef.current = oppGs.length;
-            await fetchUpdatedRating();
+            if (isSpec) {
+              setMyGuesses(detailsRes.player1Guesses);
+              setOpponentGuesses(detailsRes.player2Guesses);
+            } else {
+              const p1 = updatedMatch.player1 === username;
+              const oppGs = p1
+                ? detailsRes.player2Guesses
+                : detailsRes.player1Guesses;
+              setOpponentGuesses(oppGs);
+              opponentGuessesCountRef.current = oppGs.length;
+              await fetchUpdatedRating();
+            }
           }
         } catch {
           // Ignore polling errors
@@ -282,9 +315,9 @@ export default function ArenaMatchPage({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [match?.status, matchIdNum, username]);
 
-  // WAITING timeout countdown
+  // WAITING timeout countdown (only for actual participants)
   useEffect(() => {
-    if (match?.status === "WAITING") {
+    if (match?.status === "WAITING" && !isSpectator) {
       const createdAtMs = parseUtcDate(match.createdAt);
       const now = Date.now();
       const elapsedSec = Math.max(0, Math.floor((now - createdAtMs) / 1000));
@@ -429,6 +462,33 @@ export default function ArenaMatchPage({
   }
 
   if (match?.status === "WAITING") {
+    if (isSpectator) {
+      return (
+        <div className="flex flex-col items-center justify-center min-h-[60vh]">
+          <div className="card-brutal p-8 text-center max-w-lg mx-auto w-full border-3 border-border shadow-brutal bg-surface flex flex-col items-center">
+            <span className="text-xs font-display font-black tracking-widest text-border/70 uppercase px-3 py-0.5 bg-pastel-yellow border-2 border-border rounded-sm shadow-[1px_1px_0px_#1A1A2E] mb-3">
+              SPECTATOR MODE
+            </span>
+            <h2 className="font-display font-black text-2xl text-border tracking-tight mb-1">
+              Waiting for Match to Begin
+            </h2>
+            <p className="text-border/60 mb-6 font-display font-bold text-xs uppercase tracking-wider">
+              Host: {match.player1} &bull; Match #{match.id}
+            </p>
+            <p className="font-body text-sm text-border/80 mb-6">
+              Player 1 is waiting for an opponent. As soon as another player joins, the live duel will start on this screen!
+            </p>
+            <button
+              onClick={() => router.push("/arena")}
+              className="btn-brutal bg-surface px-8 py-2.5 font-bold text-border text-sm shadow-brutal-sm"
+            >
+              Back to Arena
+            </button>
+          </div>
+        </div>
+      );
+    }
+
     const minutes = Math.floor(remainingSeconds / 60);
     const seconds = remainingSeconds % 60;
 
@@ -485,6 +545,156 @@ export default function ArenaMatchPage({
           >
             Back to Arena
           </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (isSpectator && match) {
+    const p1Guesses = myGuesses;
+    const p2Guesses = opponentGuesses;
+    const p1Name = match.player1;
+    const p2Name = match.player2 || "Waiting for opponent...";
+    const isCompleted = isTerminal(match.status);
+
+    let resultBannerText = "";
+    let resultBannerColor = "bg-pastel-yellow";
+    if (match.status === "PLAYER1_WON") {
+      resultBannerText = `${p1Name} WON THE DUEL!`;
+      resultBannerColor = "bg-pastel-green";
+    } else if (match.status === "PLAYER2_WON") {
+      resultBannerText = `${p2Name} WON THE DUEL!`;
+      resultBannerColor = "bg-pastel-green";
+    } else if (match.status === "DRAW") {
+      resultBannerText = "MATCH ENDED IN A DRAW";
+      resultBannerColor = "bg-pastel-yellow";
+    }
+
+    return (
+      <div className="flex flex-col max-w-5xl mx-auto py-6 px-4 w-full">
+        {/* Spectator Header Bar */}
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-6 pb-4 border-b-3 border-border">
+          <button
+            onClick={() => router.push("/arena")}
+            className="btn-brutal bg-surface px-4 py-2 text-xs font-bold text-border flex items-center gap-1.5 shadow-brutal-sm"
+          >
+            <ArrowLeft className="w-4 h-4" /> Back to Arena
+          </button>
+
+          <div className="flex items-center gap-2">
+            <span className="flex items-center gap-1.5 px-3 py-1 bg-pastel-blue rounded-brutal border-2 border-border shadow-brutal-sm text-xs font-display font-black text-border uppercase tracking-wider">
+              <Eye className="w-4 h-4" /> Spectator Mode
+            </span>
+            {match.status === "IN_PROGRESS" && (
+              <span className="flex items-center gap-1.5 px-2.5 py-1 bg-pastel-yellow rounded-brutal border-2 border-border text-xs font-display font-black text-border uppercase tracking-wider">
+                <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span> LIVE
+              </span>
+            )}
+            <span className="text-xs font-display font-bold text-border/60">
+              Match #{match.id}
+            </span>
+          </div>
+        </div>
+
+        {/* Conclusion Banner */}
+        {isCompleted && (
+          <div
+            className={`w-full p-6 rounded-brutal border-3 border-border shadow-brutal text-center mb-8 flex flex-col items-center ${resultBannerColor}`}
+          >
+            <span className="px-3 py-1 rounded-sm bg-surface border-2 border-border text-xs font-display font-black tracking-wider uppercase shadow-[1px_1px_0px_#1A1A2E] mb-2 inline-block">
+              MATCH CONCLUDED
+            </span>
+            <h2 className="font-display font-black text-3xl sm:text-4xl text-border uppercase tracking-tight">
+              {resultBannerText}
+            </h2>
+            <button
+              onClick={() => router.push("/arena")}
+              className="btn-brutal bg-primary px-6 py-2 text-xs font-bold text-border mt-4 shadow-brutal-sm"
+            >
+              Back to Arena Lobby
+            </button>
+          </div>
+        )}
+
+        {/* Dual Board Arena Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          {/* Player 1 Side */}
+          <div className="bg-surface p-6 rounded-brutal border-3 border-border shadow-brutal flex flex-col items-center">
+            <div className="flex items-center gap-3 w-full pb-4 mb-4 border-b-2 border-border">
+              <Avatar username={p1Name} size="md" />
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5">
+                  <span className="px-2 py-0.5 rounded-sm bg-pastel-yellow border border-border text-xs font-display font-black tracking-wider uppercase text-border">
+                    PLAYER 1
+                  </span>
+                  {match.winner === "PLAYER1" && (
+                    <span className="text-xs font-black text-green-700 bg-green-100 px-1.5 py-0.5 rounded border border-green-700">
+                      WINNER
+                    </span>
+                  )}
+                </div>
+                <span className="font-display font-black text-lg text-border truncate block mt-0.5">
+                  {p1Name}
+                </span>
+              </div>
+              <div className="text-right">
+                <span className="text-xs font-display font-bold text-border/60 block">Attempts</span>
+                <span className="font-display font-black text-sm text-border">
+                  {match.player1Attempts} / 6
+                </span>
+              </div>
+            </div>
+
+            <div className="flex justify-center">
+              <GameBoard
+                guesses={p1Guesses.map((g) => ({
+                  word: isCompleted ? g.guess : "",
+                  result: g.result,
+                }))}
+                currentGuess=""
+                isActive={false}
+              />
+            </div>
+          </div>
+
+          {/* Player 2 Side */}
+          <div className="bg-surface p-6 rounded-brutal border-3 border-border shadow-brutal flex flex-col items-center">
+            <div className="flex items-center gap-3 w-full pb-4 mb-4 border-b-2 border-border">
+              <Avatar username={p2Name} size="md" />
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5">
+                  <span className="px-2 py-0.5 rounded-sm bg-pastel-pink border border-border text-xs font-display font-black tracking-wider uppercase text-border">
+                    PLAYER 2
+                  </span>
+                  {match.winner === "PLAYER2" && (
+                    <span className="text-xs font-black text-green-700 bg-green-100 px-1.5 py-0.5 rounded border border-green-700">
+                      WINNER
+                    </span>
+                  )}
+                </div>
+                <span className="font-display font-black text-lg text-border truncate block mt-0.5">
+                  {p2Name}
+                </span>
+              </div>
+              <div className="text-right">
+                <span className="text-xs font-display font-bold text-border/60 block">Attempts</span>
+                <span className="font-display font-black text-sm text-border">
+                  {match.player2Attempts} / 6
+                </span>
+              </div>
+            </div>
+
+            <div className="flex justify-center">
+              <GameBoard
+                guesses={p2Guesses.map((g) => ({
+                  word: isCompleted ? g.guess : "",
+                  result: g.result,
+                }))}
+                currentGuess=""
+                isActive={false}
+              />
+            </div>
+          </div>
         </div>
       </div>
     );

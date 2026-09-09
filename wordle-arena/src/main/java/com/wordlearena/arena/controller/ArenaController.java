@@ -12,6 +12,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/arena")
 public class ArenaController {
@@ -55,6 +57,16 @@ public class ArenaController {
                 .findActiveMatch(user)
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.noContent().build());
+    }
+
+    /*
+     * Get all currently active matches for spectator mode.
+     */
+    @GetMapping("/live")
+    public ResponseEntity<List<ArenaMatchResponse>> getLiveMatches() {
+        return ResponseEntity.ok(
+                arenaService.getLiveMatches()
+        );
     }
 
     /*

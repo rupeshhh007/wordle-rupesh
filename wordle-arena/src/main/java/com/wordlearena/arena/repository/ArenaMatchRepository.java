@@ -89,4 +89,15 @@ public interface ArenaMatchRepository
             @Param("statuses") Collection<ArenaMatchStatus> statuses,
             @Param("cutoff") LocalDateTime cutoff
     );
+
+    @Query("""
+        SELECT m FROM ArenaMatch m
+        WHERE m.status = :status
+          AND m.startedAt > :cutoff
+        ORDER BY m.startedAt DESC
+    """)
+    List<ArenaMatch> findLiveMatches(
+            @Param("status") ArenaMatchStatus status,
+            @Param("cutoff") LocalDateTime cutoff
+    );
 }

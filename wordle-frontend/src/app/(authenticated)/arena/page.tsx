@@ -2,14 +2,17 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Swords, Loader2 } from 'lucide-react';
-import { findMatch, getActiveMatch } from '@/lib/api/arena';
+import { Swords, Loader2, Eye } from 'lucide-react';
+import { findMatch, getActiveMatch, getLiveMatches } from '@/lib/api/arena';
 import { LoadingState } from '@/components/ui/LoadingState';
+import { Avatar } from '@/components/ui/Avatar';
+import type { ArenaMatchResponse } from '@/types/api';
 
 export default function ArenaLobbyPage() {
   const router = useRouter();
   const [isCheckingActive, setIsCheckingActive] = useState(true);
   const [isSearching, setIsSearching] = useState(false);
+  const [liveMatches, setLiveMatches] = useState<ArenaMatchResponse[]>([]);
   const [error, setError] = useState<string | null>(null);
   const mounted = useRef(true);
 
@@ -37,15 +40,31 @@ export default function ArenaLobbyPage() {
       }
     }
 
+    async function loadLiveMatches() {
+      try {
+        const matches = await getLiveMatches();
+        if (mounted.current) {
+          setLiveMatches(matches);
+        }
+      } catch {
+        // ignore
+      }
+    }
+
     // Clear any stale localStorage on lobby load
     if (typeof window !== 'undefined') {
       localStorage.removeItem('wordle_active_arena_match');
     }
 
     checkActiveMatch();
+    loadLiveMatches();
+
+    // Poll live matches every 10 seconds while on lobby
+    const liveInterval = setInterval(loadLiveMatches, 10000);
 
     return () => {
       mounted.current = false;
+      clearInterval(liveInterval);
     };
   }, [router]);
 
@@ -119,6 +138,78 @@ export default function ArenaLobbyPage() {
             'Find Match'
           )}
         </button>
+      </div>
+
+      {/* Live Duels / Spectator Section */}
+      <div className="w-full max-w-lg mt-12">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <Eye className="w-5 h-5 text-border" />
+            <h3 className="font-display font-black text-xl text-border uppercase tracking-tight">
+              Live Duels
+            </h3>
+          </div>
+          <span className="text-xs font-display font-bold text-border/60">
+            {liveMatches.length} active {liveMatches.length === 1 ? 'match' : 'matches'}
+          </span>
+        </div>
+
+        {liveMatches.length === 0 ? (
+          <div className="bg-surface p-6 rounded-brutal border-3 border-border shadow-brutal text-center">
+            <p className="font-body text-sm text-border/70 font-medium">
+              No live duels happening right now. Click &quot;Find Match&quot; above to start one!
+            </p>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {liveMatches.map((m) => (
+              <div
+                key={m.id}
+                className="bg-surface p-4 rounded-brutal border-3 border-border shadow-brutal flex flex-col justify-between"
+              >
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-sm bg-pastel-yellow border border-border text-xs font-display font-black text-border uppercase tracking-wider">
+                      <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
+                      LIVE
+                    </span>
+                    <span className="text-xs font-display font-semibold text-border/60">
+                      Match #{m.id}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-2 my-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Avatar username={m.player1} size="sm" />
+                      <span className="font-display font-bold text-sm text-border truncate">
+                        {m.player1}
+                      </span>
+                    </div>
+
+                    <span className="font-display font-black text-xs text-border/40 shrink-0">
+                      VS
+                    </span>
+
+                    <div className="flex items-center gap-2 min-w-0 justify-end">
+                      <span className="font-display font-bold text-sm text-border truncate text-right">
+                        {m.player2 || 'Waiting'}
+                      </span>
+                      <Avatar username={m.player2 || '?'} size="sm" />
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => router.push(`/arena/${m.id}`)}
+                  className="btn-brutal bg-pastel-blue text-border px-4 py-2 w-full text-xs font-bold flex items-center justify-center gap-1.5 mt-2 shadow-brutal-sm"
+                >
+                  <Eye className="w-4 h-4" />
+                  Watch Live
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

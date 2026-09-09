@@ -164,10 +164,31 @@ public class ArenaService {
             Long matchId,
             User user) {
 
-        ArenaMatch match =
-                getMatchForUser(matchId, user);
+        ArenaMatch match = arenaMatchRepository
+                .findById(matchId)
+                .orElseThrow(() ->
+                        new IllegalArgumentException(
+                                "Arena match not found"
+                        ));
 
         return toResponse(match);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ArenaMatchResponse> getLiveMatches() {
+        LocalDateTime cutoff =
+                LocalDateTime.now().minusMinutes(
+                        IN_PROGRESS_EXPIRY_MINUTES
+                );
+
+        return arenaMatchRepository
+                .findLiveMatches(
+                        ArenaMatchStatus.IN_PROGRESS,
+                        cutoff
+                )
+                .stream()
+                .map(this::toResponse)
+                .toList();
     }
 
     @Transactional(readOnly = true)
@@ -175,11 +196,20 @@ public class ArenaService {
             Long matchId,
             User user) {
 
-        ArenaMatch match =
-                getMatchForUser(matchId, user);
+        ArenaMatch match = arenaMatchRepository
+                .findById(matchId)
+                .orElseThrow(() ->
+                        new IllegalArgumentException(
+                                "Arena match not found"
+                        ));
 
         boolean isCompleted = isCompletedStatus(match.getStatus());
         boolean isPlayer1 = match.getPlayer1().getId().equals(user.getId());
+        boolean isPlayer2 = match.getPlayer2() != null && match.getPlayer2().getId().equals(user.getId());
+        boolean isSpectator = !isPlayer1 && !isPlayer2;
+
+        boolean maskP1 = isSpectator ? !isCompleted : (!isPlayer1 && !isCompleted);
+        boolean maskP2 = isSpectator ? !isCompleted : (!isPlayer2 && !isCompleted);
 
         List<ArenaGuessHistoryResponse> player1Guesses =
                 arenaGuessRepository
@@ -188,7 +218,7 @@ public class ArenaService {
                                 match.getPlayer1()
                         )
                         .stream()
-                        .map(g -> toGuessHistoryResponse(g, !isPlayer1 && !isCompleted))
+                        .map(g -> toGuessHistoryResponse(g, maskP1))
                         .toList();
 
         List<ArenaGuessHistoryResponse> player2Guesses =
@@ -200,7 +230,7 @@ public class ArenaService {
                                 match.getPlayer2()
                         )
                         .stream()
-                        .map(g -> toGuessHistoryResponse(g, isPlayer1 && !isCompleted))
+                        .map(g -> toGuessHistoryResponse(g, maskP2))
                         .toList();
 
         return new ArenaMatchDetailsResponse(

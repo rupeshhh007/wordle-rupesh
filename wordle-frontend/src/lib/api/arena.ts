@@ -43,3 +43,7 @@ export function cancelMatch(matchId: number): Promise<ArenaMatchResponse> {
 export function forfeitMatch(matchId: number): Promise<ArenaMatchResponse> {
   return post<ArenaMatchResponse>(`/api/arena/${matchId}/forfeit`);
 }
+
+export function getLiveMatches(): Promise<ArenaMatchResponse[]> {
+  return get<ArenaMatchResponse[]>("/api/arena/live");
+}
