@@ -10,9 +10,11 @@ import {
   forfeitMatch,
   requestRematch,
   cancelRematch,
+  leaveLobby,
 } from "@/lib/api/arena";
 import { getMe } from "@/lib/api/users";
 import { ApiError, ConcurrentModificationError } from "@/lib/api/client";
+import { stompManager } from "@/lib/socket/stomp-client";
 import {
   ArenaMatchResponse,
   ArenaMatchDetailsResponse,
@@ -20,6 +22,7 @@ import {
   ArenaGuessHistoryResponse,
   LetterResult,
   arenaToBoardGuess,
+  MatchEventDto,
 } from "@/types/api";
 import { GameBoard } from "@/components/game/GameBoard";
 import { Keyboard } from "@/components/game/Keyboard";
@@ -27,7 +30,7 @@ import { useGameInput } from "@/hooks/useGameInput";
 import { useAuthStore } from "@/stores/auth-store";
 import { LoadingState } from "@/components/ui/LoadingState";
 import { Avatar } from "@/components/ui/Avatar";
-import { Flag, Eye, ArrowLeft, Copy, Check, Link2, Loader2, RefreshCw } from "lucide-react";
+import { Flag, Eye, ArrowLeft, Copy, Check, Link2, Loader2, RefreshCw, LogOut } from "lucide-react";
 
 /** Max seconds to wait in WAITING state before auto-cancelling. */
 const WAITING_TIMEOUT_SECONDS = 180;
@@ -128,6 +131,8 @@ export default function ArenaMatchPage({
   const [isCancelling, setIsCancelling] = useState(false);
   const [isForfeiting, setIsForfeiting] = useState(false);
   const [remainingSeconds, setRemainingSeconds] = useState(WAITING_TIMEOUT_SECONDS);
+  const [opponentLeftLobby, setOpponentLeftLobby] = useState(false);
+  const [isLeavingLobby, setIsLeavingLobby] = useState(false);
 
   const mounted = useRef(true);
   const opponentGuessesCountRef = useRef(0);
@@ -144,6 +149,21 @@ export default function ArenaMatchPage({
       waitingTimer.current = null;
     }
   }, []);
+
+  const handleLeaveLobby = async () => {
+    if (isLeavingLobby) return;
+    try {
+      setIsLeavingLobby(true);
+      clearAllTimers();
+      if (isPrivateMatch && matchIdNum) {
+        await leaveLobby(matchIdNum);
+      }
+    } catch {
+      // Ignore error on leaving
+    } finally {
+      router.push("/arena");
+    }
+  };
 
   const handleCancelMatch = async () => {
     try {
@@ -332,13 +352,95 @@ export default function ArenaMatchPage({
     }
   };
 
-  // Mount + load data
+  // Mount + load data + WebSocket subscription
   useEffect(() => {
     mounted.current = true;
     loadInitialData();
+
+    // Subscribe to STOMP WebSocket for real-time match events
+    const unsubscribe = stompManager.subscribeToMatch(matchIdNum, async (event: MatchEventDto) => {
+      if (!mounted.current) return;
+
+      if (event.eventType === "MATCH_STARTED") {
+        if (event.match) setMatch(event.match);
+        try {
+          const details = await getMatchDetails(matchIdNum);
+          if (mounted.current) {
+            setMatchDetails(details);
+            const isP1 = event.match ? event.match.player1 === username : details.player1 === username;
+            setMyGuesses(isP1 ? details.player1Guesses : details.player2Guesses);
+            setOpponentGuesses(isP1 ? details.player2Guesses : details.player1Guesses);
+          }
+        } catch {}
+      } else if (event.eventType === "GUESS_SUBMITTED") {
+        if (event.match) setMatch(event.match);
+        const isSpec = event.match ? event.match.player1 !== username && event.match.player2 !== username : false;
+        if (isSpec || (event.player && event.player !== username)) {
+          try {
+            const details = await getMatchDetails(matchIdNum);
+            if (mounted.current) {
+              setMatchDetails(details);
+              if (isSpec) {
+                setMyGuesses(details.player1Guesses);
+                setOpponentGuesses(details.player2Guesses);
+              } else {
+                const isP1 = event.match ? event.match.player1 === username : true;
+                setOpponentGuesses(isP1 ? details.player2Guesses : details.player1Guesses);
+              }
+            }
+          } catch {}
+        }
+      } else if (event.eventType === "MATCH_COMPLETED") {
+        if (event.match) setMatch(event.match);
+        try {
+          const details = await getMatchDetails(matchIdNum);
+          if (mounted.current) {
+            setMatchDetails(details);
+            const isSpec = event.match ? event.match.player1 !== username && event.match.player2 !== username : false;
+            if (isSpec) {
+              setMyGuesses(details.player1Guesses);
+              setOpponentGuesses(details.player2Guesses);
+            } else {
+              const isP1 = event.match ? event.match.player1 === username : true;
+              setMyGuesses(isP1 ? details.player1Guesses : details.player2Guesses);
+              setOpponentGuesses(isP1 ? details.player2Guesses : details.player1Guesses);
+            }
+          }
+          await fetchUpdatedRating();
+        } catch {}
+      } else if (event.eventType === "MATCH_FORFEITED" || event.eventType === "MATCH_CANCELLED") {
+        if (event.match) setMatch(event.match);
+        try {
+          const details = await getMatchDetails(matchIdNum);
+          if (mounted.current) {
+            setMatchDetails(details);
+            const isP1 = event.match ? event.match.player1 === username : true;
+            setOpponentGuesses(isP1 ? details.player2Guesses : details.player1Guesses);
+          }
+          await fetchUpdatedRating();
+        } catch {}
+      } else if (event.eventType === "REMATCH_REQUESTED") {
+        if (event.match) setMatch(event.match);
+      } else if (event.eventType === "REMATCH_ACCEPTED") {
+        if (event.match?.nextMatchId) {
+          clearAllTimers();
+          router.push(`/arena/${event.match.nextMatchId}`);
+        }
+      } else if (event.eventType === "REMATCH_CANCELLED") {
+        if (event.match) setMatch(event.match);
+      } else if (event.eventType === "PLAYER_LEFT_LOBBY") {
+        if (event.player && event.player !== username) {
+          setOpponentLeftLobby(true);
+          setIsRequestingRematch(false);
+          if (event.match) setMatch(event.match);
+        }
+      }
+    });
+
     return () => {
       mounted.current = false;
       clearAllTimers();
+      unsubscribe();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [matchIdNum, username]);
@@ -1005,14 +1107,29 @@ export default function ArenaMatchPage({
                 )}
 
                 {/* Rematch banner when opponent wants to play again */}
-                {isPrivateMatch && !isSpectator && opponentRematchRequested && !myRematchRequested && (
+                {isPrivateMatch && !isSpectator && opponentRematchRequested && !myRematchRequested && !opponentLeftLobby && (
                   <div className="w-full mt-1 mb-3 p-2.5 bg-pastel-yellow border-2 border-border rounded-sm shadow-brutal-sm text-xs font-display font-black text-border animate-pulse text-center">
                     🔥 {opponentName || "Opponent"} wants a rematch! Click Play Again to start!
                   </div>
                 )}
 
+                {/* Opponent left lobby notification */}
+                {isPrivateMatch && !isSpectator && opponentLeftLobby && (
+                  <div className="w-full mt-1 mb-3 p-2.5 bg-pastel-pink border-2 border-border rounded-sm shadow-brutal-sm text-xs font-display font-black text-border text-center flex items-center justify-center gap-1.5">
+                    <LogOut className="w-3.5 h-3.5" />
+                    <span>{opponentName || "Opponent"} left the lobby.</span>
+                  </div>
+                )}
+
                 <div className="flex flex-wrap items-center justify-center gap-3 mt-3 w-full">
-                  {isPrivateMatch && !isSpectator && myRematchRequested ? (
+                  {isPrivateMatch && !isSpectator && opponentLeftLobby ? (
+                    <button
+                      disabled
+                      className="btn-brutal bg-gray-200 px-6 py-2.5 font-bold text-border/50 text-sm shadow-brutal-sm cursor-not-allowed"
+                    >
+                      Opponent Left
+                    </button>
+                  ) : isPrivateMatch && !isSpectator && myRematchRequested ? (
                     <div className="flex items-center gap-2">
                       <button
                         disabled
@@ -1057,10 +1174,23 @@ export default function ArenaMatchPage({
                   )}
 
                   <button
-                    onClick={() => router.push(isPrivateMatch ? "/arena" : "/")}
-                    className="btn-brutal bg-surface px-6 py-2.5 font-bold text-border text-sm shadow-brutal-sm hover:bg-bg"
+                    onClick={isPrivateMatch ? handleLeaveLobby : () => router.push("/")}
+                    disabled={isLeavingLobby}
+                    className="btn-brutal bg-surface px-6 py-2.5 font-bold text-border text-sm shadow-brutal-sm hover:bg-bg flex items-center gap-1.5"
                   >
-                    {isPrivateMatch ? "Leave Lobby" : "Dashboard"}
+                    {isLeavingLobby ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Leaving...
+                      </>
+                    ) : isPrivateMatch ? (
+                      <>
+                        <LogOut className="w-4 h-4" />
+                        Leave Lobby
+                      </>
+                    ) : (
+                      "Dashboard"
+                    )}
                   </button>
                 </div>
               </div>

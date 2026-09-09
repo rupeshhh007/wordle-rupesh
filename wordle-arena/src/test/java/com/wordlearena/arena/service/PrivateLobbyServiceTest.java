@@ -321,4 +321,24 @@ class PrivateLobbyServiceTest {
                 arenaService.requestRematch(match.getId(), host)
         );
     }
+
+    @Test
+    void leaveLobby_resetsPlayerRematchFlagCleanly() {
+        User host = createUser(1L, "hostUser");
+        User friend = createUser(2L, "friendUser");
+
+        ArenaMatchResponse created = arenaService.createPrivateMatch(host);
+        arenaService.joinPrivateMatch(created.getInviteCode(), friend);
+
+        ArenaMatch match = matchStore.get(created.getInviteCode());
+        match.setStatus(ArenaMatchStatus.PLAYER1_WON);
+
+        // Host requested rematch
+        arenaService.requestRematch(match.getId(), host);
+        assertTrue(match.isRematchRequestedByPlayer1());
+
+        // Host then leaves lobby
+        ArenaMatchResponse left = arenaService.leaveLobby(match.getId(), host);
+        assertFalse(left.isRematchRequestedByPlayer1(), "Rematch flag should be reset when player leaves lobby");
+    }
 }

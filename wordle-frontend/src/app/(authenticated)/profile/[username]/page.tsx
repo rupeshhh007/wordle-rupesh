@@ -3,7 +3,7 @@
 import { use, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { getPublicProfile, getUserStats } from "@/lib/api/users";
-import { createPrivateMatch } from "@/lib/api/arena";
+import { challengeUser } from "@/lib/api/arena";
 import { useAuthStore } from "@/stores/auth-store";
 import type { PublicUserProfileResponse, StatsResponse } from "@/types/api";
 import { LoadingState } from "@/components/ui/LoadingState";
@@ -61,10 +61,10 @@ export default function PublicProfilePage({
     if (isChallenging) return;
     try {
       setIsChallenging(true);
-      const match = await createPrivateMatch();
+      const match = await challengeUser(username);
       router.push(`/arena/${match.id}`);
     } catch (err: any) {
-      alert(err.message || "Failed to create 1v1 challenge room.");
+      alert(err.message || "Failed to challenge player.");
       setIsChallenging(false);
     }
   };

@@ -216,4 +216,16 @@ public class ArenaController {
                 arenaService.cancelRematch(matchId, user)
         );
     }
+
+    @PostMapping("/{matchId}/leave")
+    public ResponseEntity<ArenaMatchResponse> leaveLobby(
+            @PathVariable Long matchId,
+            Authentication authentication
+    ) {
+        User user = getAuthenticatedUser(authentication);
+
+        return ResponseEntity.ok(
+                arenaService.leaveLobby(matchId, user)
+        );
+    }
 }

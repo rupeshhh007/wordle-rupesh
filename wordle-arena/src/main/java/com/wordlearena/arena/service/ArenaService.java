@@ -17,6 +17,9 @@ import com.wordlearena.game.logic.LetterResult;
 import com.wordlearena.game.repository.WordRepository;
 import com.wordlearena.game.service.WordEvaluationService;
 import com.wordlearena.user.entity.User;
+import com.wordlearena.user.repository.UserRepository;
+import com.wordlearena.websocket.dto.ChallengeEventDto;
+import com.wordlearena.websocket.service.ArenaWebSocketService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -52,6 +55,26 @@ public class ArenaService {
     private final WordRepository wordRepository;
     private final WordEvaluationService wordEvaluationService;
     private final ArenaRatingService arenaRatingService;
+    private final UserRepository userRepository;
+    private final ArenaWebSocketService webSocketService;
+
+    public ArenaService(
+            ArenaMatchRepository arenaMatchRepository,
+            ArenaGuessRepository arenaGuessRepository,
+            WordRepository wordRepository,
+            WordEvaluationService wordEvaluationService,
+            ArenaRatingService arenaRatingService,
+            UserRepository userRepository,
+            ArenaWebSocketService webSocketService) {
+
+        this.arenaMatchRepository = arenaMatchRepository;
+        this.arenaGuessRepository = arenaGuessRepository;
+        this.wordRepository = wordRepository;
+        this.wordEvaluationService = wordEvaluationService;
+        this.arenaRatingService = arenaRatingService;
+        this.userRepository = userRepository;
+        this.webSocketService = webSocketService;
+    }
 
     public ArenaService(
             ArenaMatchRepository arenaMatchRepository,
@@ -60,11 +83,7 @@ public class ArenaService {
             WordEvaluationService wordEvaluationService,
             ArenaRatingService arenaRatingService) {
 
-        this.arenaMatchRepository = arenaMatchRepository;
-        this.arenaGuessRepository = arenaGuessRepository;
-        this.wordRepository = wordRepository;
-        this.wordEvaluationService = wordEvaluationService;
-        this.arenaRatingService = arenaRatingService;
+        this(arenaMatchRepository, arenaGuessRepository, wordRepository, wordEvaluationService, arenaRatingService, null, null);
     }
 
     @Transactional
@@ -128,7 +147,20 @@ public class ArenaService {
 
             arenaMatchRepository.save(waitingMatch);
 
-            return toResponse(waitingMatch);
+            ArenaMatchResponse response = toResponse(waitingMatch);
+            if (webSocketService != null) {
+                webSocketService.broadcastMatchUpdate(
+                        waitingMatch.getId(),
+                        "MATCH_STARTED",
+                        response,
+                        user.getUsername(),
+                        null,
+                        null,
+                        "Opponent joined! Match started"
+                );
+            }
+
+            return response;
         }
 
         /*
@@ -465,6 +497,19 @@ public class ArenaService {
          */
         arenaMatchRepository.save(match);
 
+        if (webSocketService != null) {
+            String eventType = isCompletedStatus(match.getStatus()) ? "MATCH_COMPLETED" : "GUESS_SUBMITTED";
+            webSocketService.broadcastMatchUpdate(
+                    match.getId(),
+                    eventType,
+                    toResponse(match),
+                    user.getUsername(),
+                    attemptNumber,
+                    List.of(result),
+                    isCompletedStatus(match.getStatus()) ? "Match completed" : "New guess submitted"
+            );
+        }
+
         return new ArenaGuessResponse(
                 guess,
                 result,
@@ -505,7 +550,20 @@ public class ArenaService {
 
         arenaMatchRepository.save(match);
 
-        return toResponse(match);
+        ArenaMatchResponse response = toResponse(match);
+        if (webSocketService != null) {
+            webSocketService.broadcastMatchUpdate(
+                    match.getId(),
+                    "MATCH_CANCELLED",
+                    response,
+                    user.getUsername(),
+                    null,
+                    null,
+                    "Match was cancelled"
+            );
+        }
+
+        return response;
     }
 
     private ArenaMatch getMatchForUser(
@@ -692,7 +750,20 @@ public class ArenaService {
 
         arenaMatchRepository.save(match);
 
-        return toResponse(match);
+        ArenaMatchResponse response = toResponse(match);
+        if (webSocketService != null) {
+            webSocketService.broadcastMatchUpdate(
+                    match.getId(),
+                    "MATCH_FORFEITED",
+                    response,
+                    user.getUsername(),
+                    null,
+                    null,
+                    user.getUsername() + " forfeited the match"
+            );
+        }
+
+        return response;
     }
 
     @Transactional
@@ -764,7 +835,21 @@ public class ArenaService {
         match.setStartedAt(LocalDateTime.now());
 
         arenaMatchRepository.save(match);
-        return toResponse(match);
+
+        ArenaMatchResponse response = toResponse(match);
+        if (webSocketService != null) {
+            webSocketService.broadcastMatchUpdate(
+                    match.getId(),
+                    "MATCH_STARTED",
+                    response,
+                    user.getUsername(),
+                    null,
+                    null,
+                    "Friend joined! Match started"
+            );
+        }
+
+        return response;
     }
 
     private String generateUniqueInviteCode() {
@@ -831,7 +916,22 @@ public class ArenaService {
         }
 
         arenaMatchRepository.save(match);
-        return toResponse(match);
+
+        ArenaMatchResponse response = toResponse(match);
+        if (webSocketService != null) {
+            String eventType = match.getNextMatchId() != null ? "REMATCH_ACCEPTED" : "REMATCH_REQUESTED";
+            webSocketService.broadcastMatchUpdate(
+                    match.getId(),
+                    eventType,
+                    response,
+                    user.getUsername(),
+                    null,
+                    null,
+                    match.getNextMatchId() != null ? "Rematch starting!" : user.getUsername() + " wants a rematch"
+            );
+        }
+
+        return response;
     }
 
     @Transactional
@@ -851,7 +951,120 @@ public class ArenaService {
         }
 
         arenaMatchRepository.save(match);
-        return toResponse(match);
+
+        ArenaMatchResponse response = toResponse(match);
+        if (webSocketService != null) {
+            webSocketService.broadcastMatchUpdate(
+                    match.getId(),
+                    "REMATCH_CANCELLED",
+                    response,
+                    user.getUsername(),
+                    null,
+                    null,
+                    user.getUsername() + " cancelled rematch request"
+            );
+        }
+
+        return response;
+    }
+
+    @Transactional
+    public ArenaMatchResponse leaveLobby(Long matchId, User user) {
+        ArenaMatch match = getMatchForUser(matchId, user);
+
+        // Reset rematch request for this user if active
+        boolean isPlayer1 = match.getPlayer1().getId().equals(user.getId());
+        if (isPlayer1) {
+            match.setRematchRequestedByPlayer1(false);
+        } else {
+            match.setRematchRequestedByPlayer2(false);
+        }
+
+        arenaMatchRepository.save(match);
+
+        ArenaMatchResponse response = toResponse(match);
+        if (webSocketService != null) {
+            webSocketService.broadcastPlayerLeftLobby(match.getId(), user.getUsername(), response);
+        }
+
+        return response;
+    }
+
+    @Transactional
+    public ArenaMatchResponse challengeUser(String targetUsername, User challenger) {
+        if (challenger.getUsername().equalsIgnoreCase(targetUsername)) {
+            throw new IllegalArgumentException("You cannot challenge yourself");
+        }
+
+        if (userRepository == null) {
+            throw new IllegalStateException("User repository not available");
+        }
+
+        User targetUser = userRepository.findByUsername(targetUsername)
+                .orElseThrow(() -> new IllegalArgumentException("Target user not found: " + targetUsername));
+
+        ArenaMatchResponse match = createPrivateMatch(challenger);
+
+        if (webSocketService != null) {
+            ChallengeEventDto challengeEvent = ChallengeEventDto.builder()
+                    .type("CHALLENGE_RECEIVED")
+                    .challenger(challenger.getUsername())
+                    .challengerRating(challenger.getRating())
+                    .targetUser(targetUser.getUsername())
+                    .matchId(match.getId())
+                    .inviteCode(match.getInviteCode())
+                    .message(challenger.getUsername() + " challenged you to a 1v1 Arena Duel!")
+                    .timestamp(System.currentTimeMillis())
+                    .build();
+
+            webSocketService.sendChallenge(targetUser.getUsername(), challengeEvent);
+        }
+
+        return match;
+    }
+
+    @Transactional
+    public ArenaMatchResponse respondToChallenge(Long matchId, boolean accept, User targetUser) {
+        ArenaMatch match = arenaMatchRepository.findById(matchId)
+                .orElseThrow(() -> new IllegalArgumentException("Match not found"));
+
+        if (accept) {
+            ArenaMatchResponse joined = joinPrivateMatch(match.getInviteCode(), targetUser);
+
+            if (webSocketService != null) {
+                ChallengeEventDto acceptedEvent = ChallengeEventDto.builder()
+                        .type("CHALLENGE_ACCEPTED")
+                        .challenger(match.getPlayer1().getUsername())
+                        .targetUser(targetUser.getUsername())
+                        .matchId(match.getId())
+                        .inviteCode(match.getInviteCode())
+                        .message(targetUser.getUsername() + " accepted your challenge!")
+                        .timestamp(System.currentTimeMillis())
+                        .build();
+
+                webSocketService.sendChallengeResponse(match.getPlayer1().getUsername(), acceptedEvent);
+            }
+
+            return joined;
+        } else {
+            cancelMatch(match.getId(), match.getPlayer1());
+
+            if (webSocketService != null) {
+                ChallengeEventDto declinedEvent = ChallengeEventDto.builder()
+                        .type("CHALLENGE_DECLINED")
+                        .challenger(match.getPlayer1().getUsername())
+                        .targetUser(targetUser.getUsername())
+                        .matchId(match.getId())
+                        .inviteCode(match.getInviteCode())
+                        .message(targetUser.getUsername() + " declined your challenge.")
+                        .timestamp(System.currentTimeMillis())
+                        .build();
+
+                webSocketService.sendChallengeResponse(match.getPlayer1().getUsername(), declinedEvent);
+            }
+
+            return toResponse(match);
+        }
     }
 
     private ArenaMatchResponse toResponse(

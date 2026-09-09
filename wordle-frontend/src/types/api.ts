@@ -205,3 +205,45 @@ export function toBoardGuess(g: GuessResponse): BoardGuess {
 export function arenaToBoardGuess(g: ArenaGuessHistoryResponse): BoardGuess {
   return { word: g.guess, result: g.result };
 }
+
+// ============ WEBSOCKET EVENTS ============
+
+export type MatchEventType =
+  | "MATCH_STARTED"
+  | "GUESS_SUBMITTED"
+  | "MATCH_COMPLETED"
+  | "MATCH_FORFEITED"
+  | "MATCH_CANCELLED"
+  | "REMATCH_REQUESTED"
+  | "REMATCH_ACCEPTED"
+  | "REMATCH_CANCELLED"
+  | "PLAYER_LEFT_LOBBY";
+
+export interface MatchEventDto {
+  eventType: MatchEventType;
+  matchId: number;
+  match?: ArenaMatchResponse;
+  player?: string;
+  playerAttempts?: number;
+  lastGuessEvaluation?: LetterResult[];
+  message?: string;
+  timestamp?: number;
+}
+
+export type ChallengeEventType =
+  | "CHALLENGE_RECEIVED"
+  | "CHALLENGE_ACCEPTED"
+  | "CHALLENGE_DECLINED"
+  | "CHALLENGE_CANCELLED";
+
+export interface ChallengeEventDto {
+  type: ChallengeEventType;
+  challenger: string;
+  challengerRating?: number;
+  targetUser: string;
+  matchId: number;
+  inviteCode: string;
+  message?: string;
+  timestamp?: number;
+}
+

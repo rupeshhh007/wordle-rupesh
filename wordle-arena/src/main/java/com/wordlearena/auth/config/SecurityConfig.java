@@ -116,6 +116,10 @@ public class SecurityConfig {
                         ).permitAll()
 
                         .requestMatchers(
+                                "/ws/**"
+                        ).permitAll()
+
+                        .requestMatchers(
                                 "/error"
                         ).permitAll()
 

@@ -64,3 +64,21 @@ export function cancelRematch(matchId: number): Promise<ArenaMatchResponse> {
   return post<ArenaMatchResponse>(`/api/arena/${matchId}/rematch/cancel`);
 }
 
+export function leaveLobby(matchId: number): Promise<ArenaMatchResponse> {
+  return post<ArenaMatchResponse>(`/api/arena/${matchId}/leave`);
+}
+
+export function challengeUser(targetUsername: string): Promise<ArenaMatchResponse> {
+  return post<ArenaMatchResponse>(`/api/arena/challenge/${targetUsername}`);
+}
+
+export function respondToChallenge(
+  matchId: number,
+  accept: boolean
+): Promise<ArenaMatchResponse> {
+  return post<ArenaMatchResponse>(`/api/arena/challenge/${matchId}/respond`, {
+    accept,
+  });
+}
+
+

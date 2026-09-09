@@ -3,6 +3,7 @@
 import AuthGuard from '@/components/layout/AuthGuard';
 import Sidebar from '@/components/layout/Sidebar';
 import MobileNav from '@/components/layout/MobileNav';
+import { ChallengeNotificationToast } from '@/components/notifications/ChallengeNotificationToast';
 
 export default function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -15,6 +16,7 @@ export default function AuthenticatedLayout({ children }: { children: React.Reac
           </div>
         </main>
         <MobileNav />
+        <ChallengeNotificationToast />
       </div>
     </AuthGuard>
   );
