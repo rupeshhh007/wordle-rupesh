@@ -82,6 +82,18 @@ export default function ArenaMatchPage({
   );
   const [isLoading, setIsLoading] = useState(true);
   const [updatedRating, setUpdatedRating] = useState<number | null>(null);
+  const initialRatingRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (user?.rating !== undefined && initialRatingRef.current === null) {
+      initialRatingRef.current = user.rating;
+    }
+  }, [user?.rating]);
+
+  const ratingDelta =
+    updatedRating !== null && initialRatingRef.current !== null
+      ? updatedRating - initialRatingRef.current
+      : null;
   const [isCancelling, setIsCancelling] = useState(false);
   const [isForfeiting, setIsForfeiting] = useState(false);
   const [remainingSeconds, setRemainingSeconds] = useState(WAITING_TIMEOUT_SECONDS);
@@ -784,8 +796,26 @@ export default function ArenaMatchPage({
                 </h2>
 
                 {updatedRating !== null && (
-                  <div className="inline-block bg-surface px-4 py-1.5 rounded-brutal border-2 border-border shadow-brutal-sm font-display font-black text-sm text-border mb-4">
-                    New Rating: {updatedRating}
+                  <div className="flex items-center justify-center gap-2 mb-4">
+                    <div className="inline-flex items-center gap-2 bg-surface px-4 py-1.5 rounded-brutal border-2 border-border shadow-brutal-sm font-display font-black text-sm text-border">
+                      <span>Rating: {updatedRating}</span>
+                      {ratingDelta !== null && ratingDelta !== 0 && (
+                        <span
+                          className={`px-2 py-0.5 rounded text-xs font-bold ${
+                            ratingDelta > 0
+                              ? "bg-correct text-white"
+                              : "bg-danger text-white"
+                          }`}
+                        >
+                          {ratingDelta > 0 ? `+${ratingDelta}` : ratingDelta}
+                        </span>
+                      )}
+                      {ratingDelta === 0 && (
+                        <span className="px-2 py-0.5 rounded text-xs font-bold bg-pastel-yellow text-border">
+                          ±0
+                        </span>
+                      )}
+                    </div>
                   </div>
                 )}
 

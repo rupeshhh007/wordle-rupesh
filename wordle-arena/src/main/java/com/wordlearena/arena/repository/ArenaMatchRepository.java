@@ -125,4 +125,17 @@ public interface ArenaMatchRepository
             @Param("user") User user,
             @Param("statuses") Collection<ArenaMatchStatus> statuses
     );
+
+    /**
+     * Count finished/completed arena matches for a user (for provisional rating calculation).
+     */
+    @Query("""
+        SELECT COUNT(m) FROM ArenaMatch m
+        WHERE (m.player1 = :user OR m.player2 = :user)
+          AND m.status IN :statuses
+    """)
+    long countCompletedMatchesForUser(
+            @Param("user") User user,
+            @Param("statuses") Collection<ArenaMatchStatus> statuses
+    );
 }
