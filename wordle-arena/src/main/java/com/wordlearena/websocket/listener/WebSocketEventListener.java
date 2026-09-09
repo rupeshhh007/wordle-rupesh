@@ -1,6 +1,7 @@
 package com.wordlearena.websocket.listener;
 
 import com.wordlearena.websocket.service.UserPresenceService;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.context.event.EventListener;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.stereotype.Component;
@@ -14,7 +15,7 @@ public class WebSocketEventListener {
 
     private final UserPresenceService presenceService;
 
-    public WebSocketEventListener(UserPresenceService presenceService) {
+    public WebSocketEventListener(@Lazy UserPresenceService presenceService) {
         this.presenceService = presenceService;
     }
 

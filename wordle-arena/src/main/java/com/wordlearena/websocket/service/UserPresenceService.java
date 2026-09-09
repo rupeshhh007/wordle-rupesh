@@ -3,6 +3,7 @@ package com.wordlearena.websocket.service;
 import com.wordlearena.websocket.dto.PresenceEventDto;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
@@ -26,7 +27,7 @@ public class UserPresenceService {
     // Maps lowercase username -> original display username
     private final ConcurrentHashMap<String, String> displayUsernames = new ConcurrentHashMap<>();
 
-    public UserPresenceService(SimpMessagingTemplate messagingTemplate) {
+    public UserPresenceService(@Lazy SimpMessagingTemplate messagingTemplate) {
         this.messagingTemplate = messagingTemplate;
     }
 

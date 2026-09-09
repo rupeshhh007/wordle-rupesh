@@ -3,6 +3,7 @@ package com.wordlearena.websocket.config;
 import com.wordlearena.auth.service.CustomUserDetailsService;
 import com.wordlearena.auth.service.JwtService;
 import com.wordlearena.websocket.service.UserPresenceService;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
@@ -25,15 +26,15 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     private final JwtService jwtService;
     private final CustomUserDetailsService userDetailsService;
-    private final UserPresenceService presenceService;
+    private final ObjectProvider<UserPresenceService> presenceServiceProvider;
 
     public WebSocketConfig(
             JwtService jwtService,
             CustomUserDetailsService userDetailsService,
-            UserPresenceService presenceService) {
+            ObjectProvider<UserPresenceService> presenceServiceProvider) {
         this.jwtService = jwtService;
         this.userDetailsService = userDetailsService;
-        this.presenceService = presenceService;
+        this.presenceServiceProvider = presenceServiceProvider;
     }
 
     @Override
@@ -96,7 +97,9 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                                 accessor.setUser(authentication);
                                 String sessionId = accessor.getSessionId();
                                 if (sessionId != null) {
-                                    presenceService.onUserConnected(username, sessionId);
+                                    presenceServiceProvider.ifAvailable(service ->
+                                            service.onUserConnected(username, sessionId)
+                                    );
                                 }
                             } catch (Exception ignored) {
                                 // Invalid token / user lookup failed
