@@ -251,3 +251,10 @@ export interface ChallengeEventDto {
   timestamp?: number;
 }
 
+export interface PresenceEventDto {
+  username: string;
+  status: "ONLINE" | "OFFLINE";
+  timestamp: number;
+}
+
+

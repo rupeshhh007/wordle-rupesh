@@ -116,6 +116,10 @@ public class SecurityConfig {
                         ).permitAll()
 
                         .requestMatchers(
+                                "/api/presence/**"
+                        ).permitAll()
+
+                        .requestMatchers(
                                 "/ws/**"
                         ).permitAll()
 

@@ -8,6 +8,7 @@ import { useAuthStore } from "@/stores/auth-store";
 import type { PublicUserProfileResponse, StatsResponse } from "@/types/api";
 import { LoadingState } from "@/components/ui/LoadingState";
 import { Avatar } from "@/components/ui/Avatar";
+import { OnlineBadge, OnlineDot } from "@/components/ui/OnlineBadge";
 import {
   ArrowLeft,
   Trophy,
@@ -129,13 +130,19 @@ export default function PublicProfilePage({
       {/* Main Profile Header Card */}
       <div className="card-brutal p-6 sm:p-8 bg-surface border-3 border-border shadow-brutal">
         <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
-          <Avatar username={profile.username} size="lg" />
+          <div className="relative inline-flex items-center shrink-0">
+            <Avatar username={profile.username} size="lg" />
+            <div className="absolute bottom-0 right-0 p-0.5 bg-surface rounded-full">
+              <OnlineDot username={profile.username} size="md" />
+            </div>
+          </div>
 
           <div className="flex-1 text-center sm:text-left">
-            <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 mb-1">
+            <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 mb-1">
               <h1 className="font-display font-black text-3xl sm:text-4xl text-border tracking-tight">
                 {profile.username}
               </h1>
+              <OnlineBadge username={profile.username} size="sm" />
               {profile.rank > 0 && profile.rank <= 3 && (
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-pastel-yellow border border-border text-xs font-display font-black text-border">
                   {profile.rank === 1 ? (

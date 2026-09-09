@@ -1,14 +1,18 @@
 import { Client, StompSubscription } from "@stomp/stompjs";
-import { MatchEventDto, ChallengeEventDto } from "@/types/api";
+import { MatchEventDto, ChallengeEventDto, PresenceEventDto } from "@/types/api";
 
 function getWsUrl(): string {
   if (process.env.NEXT_PUBLIC_WS_URL) {
     return process.env.NEXT_PUBLIC_WS_URL;
   }
+  const defaultApi =
+    typeof window !== "undefined" && window.location.hostname !== "localhost"
+      ? window.location.origin
+      : "http://localhost:8080";
   const apiUrl =
     process.env.NEXT_PUBLIC_API_BASE_URL ||
     process.env.NEXT_PUBLIC_API_URL ||
-    "http://localhost:8080";
+    defaultApi;
   const urlWithoutApi = apiUrl.replace(/\/api\/?$/, "").replace(/\/$/, "");
   const isHttps = urlWithoutApi.startsWith("https://");
   const wsProto = isHttps ? "wss://" : "ws://";
@@ -217,6 +221,30 @@ class StompManager {
         }
         this.subscriptions.delete(lowerKey);
       }
+    };
+  }
+
+  public subscribeToPresence(
+    handler: (event: PresenceEventDto) => void
+  ): () => void {
+    const key = "global_presence";
+    const destination = "/topic/presence";
+
+    const entry = { destination, handler };
+    this.subscriptions.set(key, entry);
+
+    if (this.connected) {
+      this.activateSubscription(key, entry);
+    } else {
+      this.connect();
+    }
+
+    return () => {
+      const subEntry = this.subscriptions.get(key);
+      if (subEntry?.sub) {
+        subEntry.sub.unsubscribe();
+      }
+      this.subscriptions.delete(key);
     };
   }
 

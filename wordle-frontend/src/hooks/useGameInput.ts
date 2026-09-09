@@ -66,6 +66,7 @@ export function useGameInput({ onSubmit, isActive }: UseGameInputProps) {
     setCurrentGuess,
     handleKeyPress,
     shake,
+    triggerShake,
     clearGuess
   };
 }

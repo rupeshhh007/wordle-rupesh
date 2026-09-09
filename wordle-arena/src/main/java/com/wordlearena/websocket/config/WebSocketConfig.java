@@ -2,6 +2,7 @@ package com.wordlearena.websocket.config;
 
 import com.wordlearena.auth.service.CustomUserDetailsService;
 import com.wordlearena.auth.service.JwtService;
+import com.wordlearena.websocket.service.UserPresenceService;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
@@ -11,6 +12,7 @@ import org.springframework.messaging.simp.stomp.StompCommand;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.messaging.support.ChannelInterceptor;
 import org.springframework.messaging.support.MessageHeaderAccessor;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
@@ -23,18 +25,29 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     private final JwtService jwtService;
     private final CustomUserDetailsService userDetailsService;
+    private final UserPresenceService presenceService;
 
     public WebSocketConfig(
             JwtService jwtService,
-            CustomUserDetailsService userDetailsService) {
+            CustomUserDetailsService userDetailsService,
+            UserPresenceService presenceService) {
         this.jwtService = jwtService;
         this.userDetailsService = userDetailsService;
+        this.presenceService = presenceService;
     }
 
     @Override
     public void configureMessageBroker(MessageBrokerRegistry config) {
-        // Enable in-memory broker for public topics and personal user queues
-        config.enableSimpleBroker("/topic", "/queue");
+        ThreadPoolTaskScheduler taskScheduler = new ThreadPoolTaskScheduler();
+        taskScheduler.setPoolSize(1);
+        taskScheduler.setThreadNamePrefix("ws-heartbeat-");
+        taskScheduler.initialize();
+
+        // Enable in-memory broker with 10s ping/pong heartbeats to keep proxy/load-balancer sockets alive
+        config.enableSimpleBroker("/topic", "/queue")
+                .setTaskScheduler(taskScheduler)
+                .setHeartbeatValue(new long[] {10000, 10000});
+
         config.setApplicationDestinationPrefixes("/app");
         config.setUserDestinationPrefix("/user");
     }
@@ -81,6 +94,10 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                                                 userDetails.getAuthorities()
                                         );
                                 accessor.setUser(authentication);
+                                String sessionId = accessor.getSessionId();
+                                if (sessionId != null) {
+                                    presenceService.onUserConnected(username, sessionId);
+                                }
                             } catch (Exception ignored) {
                                 // Invalid token / user lookup failed
                             }

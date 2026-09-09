@@ -30,6 +30,7 @@ import { useGameInput } from "@/hooks/useGameInput";
 import { useAuthStore } from "@/stores/auth-store";
 import { LoadingState } from "@/components/ui/LoadingState";
 import { Avatar } from "@/components/ui/Avatar";
+import { OnlineDot } from "@/components/ui/OnlineBadge";
 import { Flag, Eye, ArrowLeft, Copy, Check, Link2, Loader2, RefreshCw, LogOut } from "lucide-react";
 
 /** Max seconds to wait in WAITING state before auto-cancelling. */
@@ -487,10 +488,11 @@ export default function ArenaMatchPage({
             return;
           }
 
-          // Opponent left lobby / closed room
+          // Opponent left lobby / closed room — strictly gate on WAITING or terminal status so active matches never trigger this
           if (
-            updatedMatch.lobbyClosed ||
-            (updatedMatch.playerLeft && updatedMatch.playerLeft !== username)
+            (match?.status === "WAITING" || isTerminal(updatedMatch.status)) &&
+            (updatedMatch.lobbyClosed ||
+              (updatedMatch.playerLeft && updatedMatch.playerLeft !== username))
           ) {
             setOpponentLeftLobby(true);
             setIsRequestingRematch(false);
@@ -719,12 +721,11 @@ export default function ArenaMatchPage({
         await fetchUpdatedRating();
       }
 
-      setIsSubmitting(false);
       clearGuess();
     } catch (err: any) {
       if (!mounted.current) return;
 
-      setIsSubmitting(false);
+      triggerShake();
       if (err instanceof ConcurrentModificationError) {
         const updatedMatch = await getMatch(matchIdNum);
         setMatch(updatedMatch);
@@ -742,15 +743,26 @@ export default function ArenaMatchPage({
         setError("Match state changed. Please resubmit your guess.");
       } else if (err instanceof ApiError) {
         setError(err.message);
+      } else if (err?.message) {
+        setError(err.message);
       } else {
         setError("An unexpected error occurred");
+      }
+
+      // Auto clear transient error after 3.5 seconds
+      setTimeout(() => {
+        if (mounted.current) setError(null);
+      }, 3500);
+    } finally {
+      if (mounted.current) {
+        setIsSubmitting(false);
       }
     }
   };
 
-  const { currentGuess, handleKeyPress, clearGuess } = useGameInput({
+  const { currentGuess, handleKeyPress, shake, triggerShake, clearGuess } = useGameInput({
     onSubmit: handleSubmitGuess,
-    isActive: match?.status === "IN_PROGRESS" && !isSubmitting,
+    isActive: match?.status === "IN_PROGRESS" && !isSubmitting && myGuesses.length < 6,
   });
 
   if (isLoading) {
@@ -1075,7 +1087,7 @@ export default function ArenaMatchPage({
   const isMatchTerminal = match && isTerminal(match.status);
   const myResult =
     match && isMatchTerminal ? getMyResult(match, isPlayer1 ?? true) : null;
-  const isActive = match?.status === "IN_PROGRESS" && !isSubmitting;
+  const isActive = match?.status === "IN_PROGRESS" && !isSubmitting && myGuesses.length < 6;
 
   return (
     <div className="flex flex-col max-w-4xl mx-auto py-4 px-4 w-full h-full min-h-[calc(100vh-80px)]">
@@ -1083,7 +1095,12 @@ export default function ArenaMatchPage({
       <div className="grid grid-cols-7 items-center mb-6 bg-surface p-4 rounded-brutal border-3 border-border shadow-brutal">
         <div className="col-span-3 flex flex-col">
           <div className="flex items-center gap-2">
-            <Avatar username={username || ''} size="sm" />
+            <div className="relative inline-flex items-center shrink-0">
+              <Avatar username={username || ""} size="sm" />
+              <div className="absolute -bottom-0.5 -right-0.5">
+                <OnlineDot username={username || ""} size="sm" />
+              </div>
+            </div>
             <div className="min-w-0">
               <div className="flex items-center gap-1.5">
                 <span className="px-2 py-0.5 rounded-sm bg-pastel-yellow border border-border text-xs font-display font-black tracking-wider uppercase text-border">
@@ -1112,7 +1129,14 @@ export default function ArenaMatchPage({
               </div>
               <span className="font-display font-bold text-sm text-border truncate block">{opponentName || "Waiting..."}</span>
             </div>
-            <Avatar username={opponentName || '?'} size="sm" />
+            <div className="relative inline-flex items-center shrink-0">
+              <Avatar username={opponentName || "?"} size="sm" />
+              {opponentName && (
+                <div className="absolute -bottom-0.5 -right-0.5">
+                  <OnlineDot username={opponentName} size="sm" />
+                </div>
+              )}
+            </div>
           </div>
           <span className="text-xs font-display font-semibold text-border/70 mt-1">
             {opponentAttempts ?? 0} of 6 attempts
@@ -1263,8 +1287,15 @@ export default function ArenaMatchPage({
               guesses={myGuesses.map(arenaToBoardGuess)}
               currentGuess={currentGuess}
               isActive={isActive}
+              shake={shake}
             />
           </div>
+
+          {myGuesses.length >= 6 && match?.status === "IN_PROGRESS" && (
+            <div className="w-full max-w-md mb-4 p-3 rounded-brutal border-3 border-border bg-pastel-yellow text-border font-display font-bold text-center text-sm shadow-brutal-sm animate-pulse">
+              ⏳ All 6 attempts used! Waiting for {opponentName || "opponent"} to finish their duel...
+            </div>
+          )}
 
           {error && (
             <div className="w-full max-w-md mb-4 p-3 rounded-brutal border-3 border-border bg-pastel-pink text-border font-bold text-center text-sm">

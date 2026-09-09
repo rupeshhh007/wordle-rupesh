@@ -11,6 +11,7 @@ import type {
 import { Trophy, Medal, Crown, ChevronRight } from "lucide-react";
 import { LoadingState } from "@/components/ui/LoadingState";
 import { Avatar } from "@/components/ui/Avatar";
+import { OnlineDot } from "@/components/ui/OnlineBadge";
 
 export default function LeaderboardPage() {
   const router = useRouter();
@@ -117,7 +118,12 @@ export default function LeaderboardPage() {
                     </td>
                     <td className="px-4 py-3">
                       <span className="font-display font-semibold inline-flex items-center gap-2 group-hover:underline underline-offset-2">
-                        <Avatar username={entry.username} size="sm" />
+                        <div className="relative inline-flex items-center shrink-0">
+                          <Avatar username={entry.username} size="sm" />
+                          <div className="absolute -bottom-0.5 -right-0.5">
+                            <OnlineDot username={entry.username} size="sm" />
+                          </div>
+                        </div>
                         {entry.username}
                         {isMe && (
                           <span className="ml-1 text-xs bg-primary text-border px-2 py-0.5 rounded-full border border-border font-bold">
@@ -156,7 +162,12 @@ export default function LeaderboardPage() {
               >
                 <div className="flex items-center gap-3">
                   <RankDisplay rank={entry.rank} />
-                  <Avatar username={entry.username} size="sm" />
+                  <div className="relative inline-flex items-center shrink-0">
+                    <Avatar username={entry.username} size="sm" />
+                    <div className="absolute -bottom-0.5 -right-0.5">
+                      <OnlineDot username={entry.username} size="sm" />
+                    </div>
+                  </div>
                   <span className="font-display font-semibold">
                     {entry.username}
                     {isMe && (
