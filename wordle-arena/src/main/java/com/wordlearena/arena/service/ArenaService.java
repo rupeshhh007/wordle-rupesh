@@ -48,6 +48,11 @@ public class ArenaService {
      */
     private static final int IN_PROGRESS_EXPIRY_MINUTES = 30;
 
+    /**
+     * Arena match duration limit in seconds (3 minutes).
+     */
+    public static final int ARENA_MATCH_DURATION_SECONDS = 180;
+
     private static final String INVITE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
     private static final SecureRandom RANDOM = new SecureRandom();
 
@@ -202,7 +207,7 @@ public class ArenaService {
         return toResponse(newMatch);
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public ArenaMatchResponse getMatch(
             Long matchId,
             User user) {
@@ -214,27 +219,38 @@ public class ArenaService {
                                 "Arena match not found"
                         ));
 
+        if (match.getStatus() == ArenaMatchStatus.IN_PROGRESS && isMatchTimedOut(match)) {
+            handleMatchTimeout(match);
+        }
+
         return toResponse(match);
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public List<ArenaMatchResponse> getLiveMatches() {
         LocalDateTime cutoff =
                 LocalDateTime.now().minusMinutes(
                         IN_PROGRESS_EXPIRY_MINUTES
                 );
 
-        return arenaMatchRepository
+        List<ArenaMatch> liveMatches = arenaMatchRepository
                 .findLiveMatches(
                         ArenaMatchStatus.IN_PROGRESS,
                         cutoff
-                )
-                .stream()
-                .map(this::toResponse)
-                .toList();
+                );
+
+        List<ArenaMatchResponse> result = new java.util.ArrayList<>();
+        for (ArenaMatch match : liveMatches) {
+            if (isMatchTimedOut(match)) {
+                handleMatchTimeout(match);
+            } else {
+                result.add(toResponse(match));
+            }
+        }
+        return result;
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public ArenaMatchDetailsResponse getMatchDetails(
             Long matchId,
             User user) {
@@ -245,6 +261,10 @@ public class ArenaService {
                         new IllegalArgumentException(
                                 "Arena match not found"
                         ));
+
+        if (match.getStatus() == ArenaMatchStatus.IN_PROGRESS && isMatchTimedOut(match)) {
+            handleMatchTimeout(match);
+        }
 
         boolean isCompleted = isCompletedStatus(match.getStatus());
         boolean isPlayer1 = match.getPlayer1().getId().equals(user.getId());
@@ -278,6 +298,7 @@ public class ArenaService {
 
         boolean isTerminal = isCompletedStatus(match.getStatus()) || match.getStatus() == ArenaMatchStatus.CANCELLED;
         String solutionWord = isTerminal && match.getWord() != null ? match.getWord().getWord() : null;
+        int remainingSeconds = calculateRemainingSeconds(match);
 
         return new ArenaMatchDetailsResponse(
                 match.getId(),
@@ -316,7 +337,11 @@ public class ArenaService {
 
                 match.getNextMatchId(),
 
-                solutionWord
+                solutionWord,
+
+                ARENA_MATCH_DURATION_SECONDS,
+
+                remainingSeconds
         );
     }
 
@@ -328,6 +353,16 @@ public class ArenaService {
 
         ArenaMatch match =
                 getMatchForUser(matchId, user);
+
+        /*
+         * Check if match time has expired (3-minute limit).
+         */
+        if (match.getStatus() == ArenaMatchStatus.IN_PROGRESS && isMatchTimedOut(match)) {
+            handleMatchTimeout(match);
+            throw new IllegalStateException(
+                    "Match time limit expired! Match ended in a draw."
+            );
+        }
 
         /*
          * Only players in an active match
@@ -676,6 +711,74 @@ public class ArenaService {
                 || status == ArenaMatchStatus.DRAW;
     }
 
+    public boolean isMatchTimedOut(ArenaMatch match) {
+        return isMatchTimedOut(match, 0);
+    }
+
+    public boolean isMatchTimedOut(ArenaMatch match, long toleranceSeconds) {
+        if (match.getStatus() != ArenaMatchStatus.IN_PROGRESS) {
+            return false;
+        }
+        LocalDateTime startTime = match.getStartedAt() != null ? match.getStartedAt() : match.getCreatedAt();
+        if (startTime == null) {
+            return false;
+        }
+        long elapsedSeconds = java.time.Duration.between(startTime, LocalDateTime.now()).getSeconds();
+        return elapsedSeconds >= (ARENA_MATCH_DURATION_SECONDS - toleranceSeconds);
+    }
+
+    public int calculateRemainingSeconds(ArenaMatch match) {
+        if (match.getStatus() != ArenaMatchStatus.IN_PROGRESS) {
+            return 0;
+        }
+        LocalDateTime startTime = match.getStartedAt() != null ? match.getStartedAt() : match.getCreatedAt();
+        if (startTime == null) {
+            return ARENA_MATCH_DURATION_SECONDS;
+        }
+        long elapsedSeconds = java.time.Duration.between(startTime, LocalDateTime.now()).getSeconds();
+        long remaining = ARENA_MATCH_DURATION_SECONDS - elapsedSeconds;
+        return (int) Math.max(0, remaining);
+    }
+
+    public void handleMatchTimeout(ArenaMatch match) {
+        if (match.getStatus() != ArenaMatchStatus.IN_PROGRESS) {
+            return;
+        }
+
+        match.setWinner(ArenaWinner.DRAW);
+        match.setStatus(ArenaMatchStatus.DRAW);
+        match.setCompletedAt(LocalDateTime.now());
+
+        if (!match.isRatingUpdated()) {
+            arenaRatingService.updateRatings(match);
+            match.setRatingUpdated(true);
+        }
+
+        arenaMatchRepository.save(match);
+
+        if (webSocketService != null) {
+            ArenaMatchResponse response = toResponse(match);
+            webSocketService.broadcastMatchUpdate(
+                    match.getId(),
+                    "MATCH_COMPLETED",
+                    response,
+                    null,
+                    null,
+                    null,
+                    "Time expired! Match ended in a draw."
+            );
+        }
+    }
+
+    @Transactional
+    public ArenaMatchResponse timeoutMatch(Long matchId, User user) {
+        ArenaMatch match = getMatchForUser(matchId, user);
+        if (match.getStatus() == ArenaMatchStatus.IN_PROGRESS && isMatchTimedOut(match, 2)) {
+            handleMatchTimeout(match);
+        }
+        return toResponse(match);
+    }
+
     @Transactional
     public java.util.Optional<ArenaMatchResponse> findActiveMatch(User user) {
 
@@ -703,14 +806,25 @@ public class ArenaService {
                         IN_PROGRESS_EXPIRY_MINUTES
                 );
 
-        return arenaMatchRepository.findActiveMatchesForUser(
+        java.util.Optional<ArenaMatch> activeOpt = arenaMatchRepository.findActiveMatchesForUser(
                 user,
                 java.util.List.of(
                         ArenaMatchStatus.WAITING,
                         ArenaMatchStatus.IN_PROGRESS
                 ),
                 activeCutoff
-        ).stream().findFirst().map(this::toResponse);
+        ).stream().findFirst();
+
+        if (activeOpt.isPresent()) {
+            ArenaMatch match = activeOpt.get();
+            if (match.getStatus() == ArenaMatchStatus.IN_PROGRESS && isMatchTimedOut(match)) {
+                handleMatchTimeout(match);
+                return java.util.Optional.empty();
+            }
+            return java.util.Optional.of(toResponse(match));
+        }
+
+        return java.util.Optional.empty();
     }
 
     @Transactional
@@ -1121,6 +1235,7 @@ public class ArenaService {
 
         boolean isTerminal = isCompletedStatus(match.getStatus()) || match.getStatus() == ArenaMatchStatus.CANCELLED;
         String solutionWord = isTerminal && match.getWord() != null ? match.getWord().getWord() : null;
+        int remainingSeconds = calculateRemainingSeconds(match);
 
         return new ArenaMatchResponse(
                 match.getId(),
@@ -1142,7 +1257,9 @@ public class ArenaService {
                 match.getNextMatchId(),
                 match.isLobbyClosed(),
                 match.getPlayerLeft(),
-                solutionWord
+                solutionWord,
+                ARENA_MATCH_DURATION_SECONDS,
+                remainingSeconds
         );
     }
 }

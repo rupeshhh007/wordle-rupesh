@@ -119,6 +119,8 @@ export interface ArenaMatchResponse {
   lobbyClosed?: boolean;
   playerLeft?: string;
   word?: string;
+  timeLimitSeconds?: number;
+  remainingSeconds?: number;
 }
 
 export interface ArenaMatchDetailsResponse {
@@ -143,6 +145,8 @@ export interface ArenaMatchDetailsResponse {
   lobbyClosed?: boolean;
   playerLeft?: string;
   word?: string;
+  timeLimitSeconds?: number;
+  remainingSeconds?: number;
 }
 
 export interface ArenaGuessResponse {

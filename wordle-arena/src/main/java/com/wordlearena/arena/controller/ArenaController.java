@@ -228,4 +228,16 @@ public class ArenaController {
                 arenaService.leaveLobby(matchId, user)
         );
     }
+
+    @PostMapping("/{matchId}/timeout")
+    public ResponseEntity<ArenaMatchResponse> timeoutMatch(
+            @PathVariable Long matchId,
+            Authentication authentication
+    ) {
+        User user = getAuthenticatedUser(authentication);
+
+        return ResponseEntity.ok(
+                arenaService.timeoutMatch(matchId, user)
+        );
+    }
 }

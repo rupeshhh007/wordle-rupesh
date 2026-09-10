@@ -43,6 +43,12 @@ public class ArenaMatchResponse {
     @JsonProperty("word")
     private String word;
 
+    @JsonProperty("timeLimitSeconds")
+    private int timeLimitSeconds = 180;
+
+    @JsonProperty("remainingSeconds")
+    private int remainingSeconds;
+
     public ArenaMatchResponse(
             Long id,
             String player1,
@@ -157,6 +163,33 @@ public class ArenaMatchResponse {
         this.word = word;
     }
 
+    public ArenaMatchResponse(
+            Long id,
+            String player1,
+            String player2,
+            ArenaMatchStatus status,
+            ArenaWinner winner,
+            int player1Attempts,
+            int player2Attempts,
+            LocalDateTime createdAt,
+            LocalDateTime startedAt,
+            LocalDateTime completedAt,
+            boolean isPrivate,
+            String inviteCode,
+            boolean rematchRequestedByPlayer1,
+            boolean rematchRequestedByPlayer2,
+            Long nextMatchId,
+            boolean lobbyClosed,
+            String playerLeft,
+            String word,
+            int timeLimitSeconds,
+            int remainingSeconds
+    ) {
+        this(id, player1, player2, status, winner, player1Attempts, player2Attempts, createdAt, startedAt, completedAt, isPrivate, inviteCode, rematchRequestedByPlayer1, rematchRequestedByPlayer2, nextMatchId, lobbyClosed, playerLeft, word);
+        this.timeLimitSeconds = timeLimitSeconds;
+        this.remainingSeconds = remainingSeconds;
+    }
+
     public Long getId() {
         return id;
     }
@@ -244,5 +277,21 @@ public class ArenaMatchResponse {
 
     public void setWord(String word) {
         this.word = word;
+    }
+
+    public int getTimeLimitSeconds() {
+        return timeLimitSeconds;
+    }
+
+    public void setTimeLimitSeconds(int timeLimitSeconds) {
+        this.timeLimitSeconds = timeLimitSeconds;
+    }
+
+    public int getRemainingSeconds() {
+        return remainingSeconds;
+    }
+
+    public void setRemainingSeconds(int remainingSeconds) {
+        this.remainingSeconds = remainingSeconds;
     }
 }

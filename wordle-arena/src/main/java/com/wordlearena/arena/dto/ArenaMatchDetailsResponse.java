@@ -45,6 +45,12 @@ public class ArenaMatchDetailsResponse {
     @JsonProperty("word")
     private String word;
 
+    @JsonProperty("timeLimitSeconds")
+    private int timeLimitSeconds = 180;
+
+    @JsonProperty("remainingSeconds")
+    private int remainingSeconds;
+
     public ArenaMatchDetailsResponse(
             Long id,
             String player1,
@@ -143,6 +149,33 @@ public class ArenaMatchDetailsResponse {
         this.word = word;
     }
 
+    public ArenaMatchDetailsResponse(
+            Long id,
+            String player1,
+            String player2,
+            ArenaMatchStatus status,
+            ArenaWinner winner,
+            int player1Attempts,
+            int player2Attempts,
+            List<ArenaGuessHistoryResponse> player1Guesses,
+            List<ArenaGuessHistoryResponse> player2Guesses,
+            LocalDateTime createdAt,
+            LocalDateTime startedAt,
+            LocalDateTime completedAt,
+            boolean isPrivate,
+            String inviteCode,
+            boolean rematchRequestedByPlayer1,
+            boolean rematchRequestedByPlayer2,
+            Long nextMatchId,
+            String word,
+            int timeLimitSeconds,
+            int remainingSeconds
+    ) {
+        this(id, player1, player2, status, winner, player1Attempts, player2Attempts, player1Guesses, player2Guesses, createdAt, startedAt, completedAt, isPrivate, inviteCode, rematchRequestedByPlayer1, rematchRequestedByPlayer2, nextMatchId, word);
+        this.timeLimitSeconds = timeLimitSeconds;
+        this.remainingSeconds = remainingSeconds;
+    }
+
     public Long getId() {
         return id;
     }
@@ -228,5 +261,21 @@ public class ArenaMatchDetailsResponse {
 
     public void setWord(String word) {
         this.word = word;
+    }
+
+    public int getTimeLimitSeconds() {
+        return timeLimitSeconds;
+    }
+
+    public void setTimeLimitSeconds(int timeLimitSeconds) {
+        this.timeLimitSeconds = timeLimitSeconds;
+    }
+
+    public int getRemainingSeconds() {
+        return remainingSeconds;
+    }
+
+    public void setRemainingSeconds(int remainingSeconds) {
+        this.remainingSeconds = remainingSeconds;
     }
 }

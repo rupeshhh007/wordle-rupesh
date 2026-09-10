@@ -86,4 +86,8 @@ export function getPendingChallenges(): Promise<ChallengeEventDto[]> {
   return get<ChallengeEventDto[]>("/api/arena/challenge/pending");
 }
 
+export function timeoutMatch(matchId: number): Promise<ArenaMatchResponse> {
+  return post<ArenaMatchResponse>(`/api/arena/${matchId}/timeout`);
+}
+
 

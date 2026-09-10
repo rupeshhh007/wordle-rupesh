@@ -11,6 +11,7 @@ import {
   requestRematch,
   cancelRematch,
   leaveLobby,
+  timeoutMatch,
 } from "@/lib/api/arena";
 import { getMe } from "@/lib/api/users";
 import { ApiError, ConcurrentModificationError } from "@/lib/api/client";
@@ -31,10 +32,19 @@ import { useAuthStore } from "@/stores/auth-store";
 import { LoadingState } from "@/components/ui/LoadingState";
 import { Avatar } from "@/components/ui/Avatar";
 import { OnlineDot } from "@/components/ui/OnlineBadge";
-import { Flag, Eye, ArrowLeft, Copy, Check, Link2, Loader2, RefreshCw, LogOut } from "lucide-react";
+import { Flag, Eye, ArrowLeft, Copy, Check, Link2, Loader2, RefreshCw, LogOut, Clock } from "lucide-react";
 
 /** Max seconds to wait in WAITING state before auto-cancelling. */
 const WAITING_TIMEOUT_SECONDS = 180;
+
+/** Max seconds for an active Arena duel (3 minutes). */
+const ARENA_MATCH_TIMEOUT_SECONDS = 180;
+
+function formatTimer(totalSeconds: number): string {
+  const m = Math.floor(Math.max(0, totalSeconds) / 60);
+  const s = Math.max(0, totalSeconds) % 60;
+  return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+}
 
 function isTerminal(status: ArenaMatchStatus): boolean {
   return ["PLAYER1_WON", "PLAYER2_WON", "DRAW", "CANCELLED"].includes(status);
@@ -133,6 +143,7 @@ export default function ArenaMatchPage({
   const [isCancelling, setIsCancelling] = useState(false);
   const [isForfeiting, setIsForfeiting] = useState(false);
   const [remainingSeconds, setRemainingSeconds] = useState(WAITING_TIMEOUT_SECONDS);
+  const [matchTimeLeft, setMatchTimeLeft] = useState<number>(ARENA_MATCH_TIMEOUT_SECONDS);
   const [opponentLeftLobby, setOpponentLeftLobby] = useState(false);
   const [isLeavingLobby, setIsLeavingLobby] = useState(false);
 
@@ -140,6 +151,8 @@ export default function ArenaMatchPage({
   const opponentGuessesCountRef = useRef(0);
   const pollInterval = useRef<NodeJS.Timeout | null>(null);
   const waitingTimer = useRef<NodeJS.Timeout | null>(null);
+  const matchTimer = useRef<NodeJS.Timeout | null>(null);
+  const matchTimeoutTriggered = useRef(false);
 
   const clearAllTimers = useCallback(() => {
     if (pollInterval.current) {
@@ -150,7 +163,33 @@ export default function ArenaMatchPage({
       clearInterval(waitingTimer.current);
       waitingTimer.current = null;
     }
+    if (matchTimer.current) {
+      clearInterval(matchTimer.current);
+      matchTimer.current = null;
+    }
   }, []);
+
+  const handleMatchTimeout = async () => {
+    try {
+      const updatedMatch = await timeoutMatch(matchIdNum);
+      if (!mounted.current) return;
+      setMatch(updatedMatch);
+      const detailsRes = await getMatchDetails(matchIdNum);
+      if (!mounted.current) return;
+      setMatchDetails(detailsRes);
+      if (updatedMatch.word) setSolutionWord(updatedMatch.word);
+      if (detailsRes.word) setSolutionWord(detailsRes.word);
+      const p1 = updatedMatch.player1 === username;
+      const oppGs = p1 ? detailsRes.player2Guesses : detailsRes.player1Guesses;
+      setOpponentGuesses(oppGs);
+      await fetchUpdatedRating();
+    } catch {
+      try {
+        const updatedMatch = await getMatch(matchIdNum);
+        if (mounted.current) setMatch(updatedMatch);
+      } catch {}
+    }
+  };
 
   const handleLeaveLobby = async () => {
     if (isLeavingLobby) return;
@@ -321,6 +360,16 @@ export default function ArenaMatchPage({
       if (matchRes.word) setSolutionWord(matchRes.word);
       if (detailsRes.word) setSolutionWord(detailsRes.word);
 
+      if (matchRes.status === "IN_PROGRESS") {
+        if (matchRes.remainingSeconds !== undefined) {
+          setMatchTimeLeft(matchRes.remainingSeconds);
+        } else if (matchRes.startedAt) {
+          const startedAtMs = parseUtcDate(matchRes.startedAt);
+          const elapsedSec = Math.max(0, Math.floor((Date.now() - startedAtMs) / 1000));
+          setMatchTimeLeft(Math.max(0, (matchRes.timeLimitSeconds || ARENA_MATCH_TIMEOUT_SECONDS) - elapsedSec));
+        }
+      }
+
       const p1 = matchRes.player1 === username;
       const isSpec = matchRes.player1 !== username && matchRes.player2 !== username;
 
@@ -380,7 +429,15 @@ export default function ArenaMatchPage({
       if (!mounted.current) return;
 
       if (event.eventType === "MATCH_STARTED") {
-        if (event.match) setMatch(event.match);
+        matchTimeoutTriggered.current = false;
+        if (event.match) {
+          setMatch(event.match);
+          if (event.match.remainingSeconds !== undefined) {
+            setMatchTimeLeft(event.match.remainingSeconds);
+          } else {
+            setMatchTimeLeft(ARENA_MATCH_TIMEOUT_SECONDS);
+          }
+        }
         try {
           const details = await getMatchDetails(matchIdNum);
           if (mounted.current) {
@@ -409,6 +466,10 @@ export default function ArenaMatchPage({
           } catch {}
         }
       } else if (event.eventType === "MATCH_COMPLETED") {
+        if (matchTimer.current) {
+          clearInterval(matchTimer.current);
+          matchTimer.current = null;
+        }
         if (event.match) setMatch(event.match);
         if (event.match?.word) setSolutionWord(event.match.word);
         try {
@@ -674,6 +735,46 @@ export default function ArenaMatchPage({
       window.removeEventListener("beforeunload", handleBeforeUnload);
     };
   }, [match?.status]);
+
+  // 3-Minute Arena match countdown timer (drift-free, synced against startedAt)
+  useEffect(() => {
+    if (match?.status !== "IN_PROGRESS" || !match.startedAt) {
+      if (matchTimer.current) {
+        clearInterval(matchTimer.current);
+        matchTimer.current = null;
+      }
+      return;
+    }
+
+    const startedAtMs = parseUtcDate(match.startedAt);
+    const totalSec = match.timeLimitSeconds || ARENA_MATCH_TIMEOUT_SECONDS;
+
+    const updateCountdown = () => {
+      const elapsedSec = Math.max(0, Math.floor((Date.now() - startedAtMs) / 1000));
+      const remaining = Math.max(0, totalSec - elapsedSec);
+      setMatchTimeLeft(remaining);
+
+      if (remaining <= 0 && !matchTimeoutTriggered.current) {
+        matchTimeoutTriggered.current = true;
+        if (matchTimer.current) {
+          clearInterval(matchTimer.current);
+          matchTimer.current = null;
+        }
+        handleMatchTimeout();
+      }
+    };
+
+    updateCountdown();
+    matchTimer.current = setInterval(updateCountdown, 1000);
+
+    return () => {
+      if (matchTimer.current) {
+        clearInterval(matchTimer.current);
+        matchTimer.current = null;
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [match?.status, match?.startedAt, match?.timeLimitSeconds]);
 
   const handleSubmitGuess = async (guess: string) => {
     if (!match) return;
@@ -984,6 +1085,12 @@ export default function ArenaMatchPage({
                 <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span> LIVE
               </span>
             )}
+            {match.status === "IN_PROGRESS" && (
+              <span className="flex items-center gap-1.5 px-2.5 py-1 bg-surface rounded-brutal border-2 border-border shadow-brutal-sm text-xs font-display font-black text-border">
+                <Clock className="w-3.5 h-3.5 text-border" />
+                <span className="tabular-nums font-mono font-bold">{formatTimer(matchTimeLeft)}</span>
+              </span>
+            )}
             <span className="text-xs font-display font-bold text-border/60">
               Match #{match.id}
             </span>
@@ -1125,8 +1232,23 @@ export default function ArenaMatchPage({
           </span>
         </div>
         
-        <div className="col-span-1 text-center font-display font-black text-lg text-border/40 select-none">
-          VS
+        <div className="col-span-1 flex flex-col items-center justify-center">
+          <div className="text-center font-display font-black text-base sm:text-lg text-border/40 select-none">
+            VS
+          </div>
+          {match?.status === "IN_PROGRESS" && (
+            <div
+              className={`mt-0.5 px-1.5 sm:px-2 py-0.5 rounded-sm border border-border text-[10px] sm:text-xs font-display font-black tabular-nums shadow-[1px_1px_0px_#1A1A2E] ${
+                matchTimeLeft <= 30
+                  ? "bg-pastel-pink text-danger animate-pulse border-danger"
+                  : matchTimeLeft <= 60
+                  ? "bg-pastel-yellow text-border"
+                  : "bg-surface text-border"
+              }`}
+            >
+              {formatTimer(matchTimeLeft)}
+            </div>
+          )}
         </div>
 
         <div className="col-span-3 flex flex-col items-end">
@@ -1175,6 +1297,14 @@ export default function ArenaMatchPage({
                 <h2 className="font-display font-black text-3xl sm:text-4xl text-border uppercase tracking-tight mb-2">
                   {myResult === "win" ? "VICTORY" : myResult === "loss" ? "DEFEAT" : "DRAW"}
                 </h2>
+
+                {myResult === "draw" && (
+                  <p className="text-xs font-display font-bold text-border/80 mb-2">
+                    {matchTimeLeft <= 0
+                      ? "⏱️ 3-Minute Time Limit Expired"
+                      : "Neither player guessed the word"}
+                  </p>
+                )}
 
                 {(match?.word || solutionWord) && (
                   <div className="my-3 flex flex-col items-center">
@@ -1307,6 +1437,33 @@ export default function ArenaMatchPage({
                   </button>
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* 3-Minute Arena Match Countdown Banner */}
+          {match?.status === "IN_PROGRESS" && (
+            <div
+              className={`w-full max-w-sm mb-4 px-4 py-2.5 rounded-brutal border-3 border-border shadow-brutal flex items-center justify-between transition-colors ${
+                matchTimeLeft <= 30
+                  ? "bg-pastel-pink text-danger animate-pulse border-danger shadow-[3px_3px_0px_#DC2626]"
+                  : matchTimeLeft <= 60
+                  ? "bg-pastel-yellow text-border shadow-brutal-sm"
+                  : "bg-surface text-border shadow-brutal-sm"
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <Clock className={`w-4 h-4 ${matchTimeLeft <= 30 ? "text-danger animate-spin" : "text-border"}`} />
+                <span className="font-display font-black text-xs uppercase tracking-wider">
+                  {matchTimeLeft <= 30 ? "TIME CRITICAL" : "TIME REMAINING"}
+                </span>
+              </div>
+              <span
+                className={`font-display font-black text-xl tabular-nums tracking-wider ${
+                  matchTimeLeft <= 30 ? "text-danger" : "text-border"
+                }`}
+              >
+                {formatTimer(matchTimeLeft)}
+              </span>
             </div>
           )}
 
