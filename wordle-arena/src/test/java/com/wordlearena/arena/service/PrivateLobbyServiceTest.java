@@ -5,6 +5,7 @@ import com.wordlearena.arena.entity.ArenaMatch;
 import com.wordlearena.arena.entity.ArenaMatchStatus;
 import com.wordlearena.arena.repository.ArenaGuessRepository;
 import com.wordlearena.arena.repository.ArenaMatchRepository;
+import com.wordlearena.common.exception.ResourceForbiddenException;
 import com.wordlearena.game.entity.Word;
 import com.wordlearena.game.repository.WordRepository;
 import com.wordlearena.game.service.WordEvaluationService;
@@ -213,6 +214,40 @@ class PrivateLobbyServiceTest {
         assertThrows(IllegalStateException.class, () ->
                 arenaService.joinPrivateMatch(created.getInviteCode(), friend2)
         );
+    }
+
+    @Test
+    void joinPrivateMatch_directChallengeRejectsOtherUsers() {
+        User host = createUser(1L, "hostUser");
+        User invited = createUser(2L, "invitedUser");
+        User intruder = createUser(3L, "intruderUser");
+
+        ArenaMatchResponse created = arenaService.createPrivateMatch(host, invited);
+
+        assertThrows(ResourceForbiddenException.class, () ->
+                arenaService.joinPrivateMatch(created.getInviteCode(), intruder)
+        );
+
+        ArenaMatchResponse joined = arenaService.joinPrivateMatch(created.getInviteCode(), invited);
+        assertEquals(ArenaMatchStatus.IN_PROGRESS, joined.getStatus());
+        assertEquals("invitedUser", joined.getPlayer2());
+    }
+
+    @Test
+    void respondToChallenge_directChallengeRejectsOtherUsers() {
+        User host = createUser(1L, "hostUser");
+        User invited = createUser(2L, "invitedUser");
+        User intruder = createUser(3L, "intruderUser");
+
+        ArenaMatchResponse created = arenaService.createPrivateMatch(host, invited);
+
+        assertThrows(ResourceForbiddenException.class, () ->
+                arenaService.respondToChallenge(created.getId(), true, intruder)
+        );
+
+        ArenaMatchResponse joined = arenaService.respondToChallenge(created.getId(), true, invited);
+        assertEquals(ArenaMatchStatus.IN_PROGRESS, joined.getStatus());
+        assertEquals("invitedUser", joined.getPlayer2());
     }
 
     @Test

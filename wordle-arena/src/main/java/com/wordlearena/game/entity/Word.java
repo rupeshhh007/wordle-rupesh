@@ -1,7 +1,6 @@
 package com.wordlearena.game.entity;
 
 import jakarta.persistence.*;
-import lombok.Getter;
 import lombok.Setter;
 
 @Entity
@@ -20,23 +19,19 @@ public class Word {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Getter
     @Setter
     @Column(nullable = false, unique = true, length = 5)
     private String word;
 
-    @Getter
     @Setter
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private WordDifficulty difficulty;
 
-    @Getter
     @Setter
     @Column(nullable = false)
     private boolean active;
 
-    @Getter
     @Setter
     @Column(nullable = false)
     private boolean answerEligible;

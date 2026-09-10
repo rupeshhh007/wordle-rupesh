@@ -818,6 +818,11 @@ public class ArenaService {
             return toResponse(match);
         }
 
+        if (match.getChallengedUser() != null
+                && !match.getChallengedUser().getId().equals(user.getId())) {
+            throw new ResourceForbiddenException("Only the challenged player can join this private match.");
+        }
+
         if (match.getStatus() == ArenaMatchStatus.CANCELLED) {
             throw new IllegalStateException("This private room was cancelled by the host.");
         }
@@ -1039,6 +1044,11 @@ public class ArenaService {
     public ArenaMatchResponse respondToChallenge(Long matchId, boolean accept, User targetUser) {
         ArenaMatch match = arenaMatchRepository.findById(matchId)
                 .orElseThrow(() -> new IllegalArgumentException("Match not found"));
+
+        if (match.getChallengedUser() == null
+                || !match.getChallengedUser().getId().equals(targetUser.getId())) {
+            throw new ResourceForbiddenException("Only the challenged player can respond to this challenge.");
+        }
 
         if (accept) {
             ArenaMatchResponse joined = joinPrivateMatch(match.getInviteCode(), targetUser);

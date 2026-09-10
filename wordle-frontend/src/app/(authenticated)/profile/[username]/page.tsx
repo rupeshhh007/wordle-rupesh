@@ -214,7 +214,7 @@ export default function PublicProfilePage({
                 NO MATCHES LOGGED
               </span>
               <p className="font-body text-sm text-border/70 mt-2">
-                This player hasn't completed any games yet.
+                This player hasn&apos;t completed any games yet.
               </p>
             </div>
           ) : (

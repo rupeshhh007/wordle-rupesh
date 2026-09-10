@@ -101,7 +101,7 @@ export default function ArenaLobbyPage() {
       mounted.current = false;
       clearInterval(liveInterval);
     };
-  }, [router]);
+  }, [router, setUser]);
 
   const handleFindMatch = async () => {
     if (isSearching || isCreatingPrivate || isJoiningPrivate) return;

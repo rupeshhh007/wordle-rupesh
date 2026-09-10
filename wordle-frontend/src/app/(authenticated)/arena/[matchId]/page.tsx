@@ -88,17 +88,17 @@ export default function ArenaMatchPage({
   );
   const [isLoading, setIsLoading] = useState(true);
   const [updatedRating, setUpdatedRating] = useState<number | null>(null);
-  const initialRatingRef = useRef<number | null>(null);
+  const [initialRating, setInitialRating] = useState<number | null>(null);
 
   useEffect(() => {
-    if (user?.rating !== undefined && initialRatingRef.current === null) {
-      initialRatingRef.current = user.rating;
+    if (user?.rating !== undefined && initialRating === null) {
+      setInitialRating(user.rating);
     }
-  }, [user?.rating]);
+  }, [initialRating, user?.rating]);
 
   const ratingDelta =
-    updatedRating !== null && initialRatingRef.current !== null
-      ? updatedRating - initialRatingRef.current
+    updatedRating !== null && initialRating !== null
+      ? updatedRating - initialRating
       : null;
 
   const [copiedCode, setCopiedCode] = useState(false);
@@ -235,6 +235,8 @@ export default function ArenaMatchPage({
   const opponentRematchRequested = isPlayer1
     ? Boolean(match?.rematchRequestedByPlayer2)
     : Boolean(match?.rematchRequestedByPlayer1);
+  const matchStatus = match?.status;
+  const matchNextMatchId = match?.nextMatchId;
 
   const handlePlayAgain = async () => {
     if (isPrivateMatch && !isSpectator) {
@@ -579,10 +581,10 @@ export default function ArenaMatchPage({
 
   // Terminal polling in private match to detect rematch requests and nextMatchId
   useEffect(() => {
-    if (!match || !isPrivateMatch || isSpectator || !isTerminal(match.status)) return;
-    if (match.nextMatchId) {
+    if (!matchStatus || !isPrivateMatch || isSpectator || !isTerminal(matchStatus)) return;
+    if (matchNextMatchId) {
       clearAllTimers();
-      router.push(`/arena/${match.nextMatchId}`);
+      router.push(`/arena/${matchNextMatchId}`);
       return;
     }
 
@@ -614,7 +616,7 @@ export default function ArenaMatchPage({
     }, 2000);
 
     return () => clearInterval(interval);
-  }, [match?.status, isPrivateMatch, isSpectator, matchIdNum, router, match?.nextMatchId, clearAllTimers, username]);
+  }, [matchStatus, isPrivateMatch, isSpectator, matchIdNum, router, matchNextMatchId, clearAllTimers, username]);
 
   // WAITING timeout countdown (only for actual participants)
   useEffect(() => {
