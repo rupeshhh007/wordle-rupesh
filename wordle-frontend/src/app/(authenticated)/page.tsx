@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { BarChart3, Target, Flame, Trophy, Calendar, Dumbbell, Swords, Star } from 'lucide-react';
+import { BarChart3, Target, Flame, Trophy, Calendar, Dumbbell, Swords, Star, Zap } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
 import { getMe } from '@/lib/api/users';
 import { getStats } from '@/lib/api/stats';
@@ -65,18 +65,48 @@ export default function DashboardPage() {
   return (
     <div className="flex flex-col gap-8 max-w-6xl mx-auto p-4 sm:p-6 lg:p-8 w-full">
       {/* Welcome header */}
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-        <div>
-          <p className="font-display font-semibold text-xs uppercase tracking-widest text-border/60">Player Dashboard</p>
-          <h1 className="font-display font-black text-3xl sm:text-4xl mt-1 text-border tracking-tight">
-            {user?.username || 'Challenger'}
-          </h1>
+      <div className="paper-lift isolate card-brutal bg-surface">
+        <div className="ink-strip h-3 border-b-3 border-border" aria-hidden="true" />
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 p-5 sm:p-7">
+          <div className="min-w-0">
+            <span className="stamp-brutal bg-pastel-blue px-3 py-1 text-[11px] text-border">
+              <Zap className="h-3.5 w-3.5" />
+              Player Dashboard
+            </span>
+            <h1 className="font-display font-black text-3xl sm:text-5xl mt-3 text-border tracking-tight break-words">
+              {user?.username || 'Challenger'}
+            </h1>
+            <p className="font-body text-sm font-semibold text-border/70 mt-2 max-w-xl">
+              Pick a mode, protect your streak, and keep your rating climbing.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-5 gap-2 shrink-0" aria-hidden="true">
+            {['W', 'O', 'R', 'D', 'S'].map((letter, index) => (
+              <span
+                key={letter}
+                className={`grid h-11 w-11 place-items-center rounded-sm border-3 border-border font-display text-xl font-black shadow-brutal-sm ${
+                  index === 0 || index === 3
+                    ? 'bg-correct text-white'
+                    : index === 1
+                      ? 'bg-present text-border'
+                      : 'bg-surface text-border'
+                }`}
+              >
+                {letter}
+              </span>
+            ))}
+          </div>
         </div>
-        
-        <div className="card-brutal inline-flex items-center gap-2.5 px-4 py-2 bg-surface cursor-default">
-          <Star className="w-5 h-5 text-primary fill-primary" />
-          <span className="font-display font-bold text-xs uppercase tracking-wider text-border/70">Rating</span>
-          <span className="font-display font-black text-2xl text-border leading-none">{user?.rating || 0}</span>
+        <div className="border-t-3 border-border bg-pastel-yellow px-5 py-3 sm:px-7 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <Star className="w-5 h-5 text-border fill-primary" />
+            <span className="font-display font-black text-xs uppercase text-border/70">Current Rating</span>
+            <span className="font-display font-black text-2xl text-border leading-none">{user?.rating || 0}</span>
+          </div>
+          <div className="font-display text-xs font-black uppercase text-border/70">
+            {stats?.gamesPlayed || 0} logged games
+          </div>
         </div>
       </div>
 
@@ -88,63 +118,72 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <Link 
             href="/daily"
-            className="card-brutal card-interactive p-6 bg-pastel-yellow flex flex-col justify-between group min-h-[190px]"
+            className="card-brutal card-interactive bg-pastel-yellow flex flex-col justify-between group min-h-[205px] overflow-hidden"
           >
-            <div className="flex items-start justify-between w-full">
-              <div className="p-3 bg-surface border-3 border-border rounded-brutal shadow-brutal-sm group-hover:scale-105 transition-transform duration-200">
-                <Calendar className="w-7 h-7 text-border" />
+            <div className="ink-strip h-2 border-b-3 border-border opacity-90" aria-hidden="true" />
+            <div className="p-6 flex flex-1 flex-col justify-between">
+              <div className="flex items-start justify-between w-full">
+                <div className="p-3 bg-surface border-3 border-border rounded-brutal shadow-brutal-sm group-hover:scale-105 transition-transform duration-200">
+                  <Calendar className="w-7 h-7 text-border" />
+                </div>
+                <span className="px-2.5 py-0.5 rounded-sm bg-surface border-2 border-border text-xs font-display font-black tracking-wider uppercase text-border shadow-[1px_1px_0px_#1A1A2E]">
+                  TODAY&apos;S PUZZLE
+                </span>
               </div>
-              <span className="px-2.5 py-0.5 rounded-sm bg-surface border-2 border-border text-xs font-display font-black tracking-wider uppercase text-border shadow-[1px_1px_0px_#1A1A2E]">
-                TODAY&apos;S PUZZLE
-              </span>
-            </div>
-            <div>
-              <h3 className="font-display font-black text-2xl text-border">Daily Challenge</h3>
-              <p className="font-body text-xs text-border/70 mt-1 font-medium">One global word every 24 hours</p>
-              <div className="mt-3 font-display font-bold text-xs text-border group-hover:translate-x-1 transition-transform inline-flex items-center gap-1">
-                Play Challenge &rarr;
+              <div>
+                <h3 className="font-display font-black text-2xl text-border">Daily Challenge</h3>
+                <p className="font-body text-xs text-border/70 mt-1 font-medium">One global word every 24 hours</p>
+                <div className="mt-3 font-display font-bold text-xs text-border group-hover:translate-x-1 transition-transform inline-flex items-center gap-1">
+                  Play Challenge &rarr;
+                </div>
               </div>
             </div>
           </Link>
           
           <Link 
             href="/practice"
-            className="card-brutal card-interactive p-6 bg-pastel-green flex flex-col justify-between group min-h-[190px]"
+            className="card-brutal card-interactive bg-pastel-green flex flex-col justify-between group min-h-[205px] overflow-hidden"
           >
-            <div className="flex items-start justify-between w-full">
-              <div className="p-3 bg-surface border-3 border-border rounded-brutal shadow-brutal-sm group-hover:scale-105 transition-transform duration-200">
-                <Dumbbell className="w-7 h-7 text-border" />
+            <div className="ink-strip h-2 border-b-3 border-border opacity-90" aria-hidden="true" />
+            <div className="p-6 flex flex-1 flex-col justify-between">
+              <div className="flex items-start justify-between w-full">
+                <div className="p-3 bg-surface border-3 border-border rounded-brutal shadow-brutal-sm group-hover:scale-105 transition-transform duration-200">
+                  <Dumbbell className="w-7 h-7 text-border" />
+                </div>
+                <span className="px-2.5 py-0.5 rounded-sm bg-surface border-2 border-border text-xs font-display font-black tracking-wider uppercase text-border shadow-[1px_1px_0px_#1A1A2E]">
+                  UNLIMITED
+                </span>
               </div>
-              <span className="px-2.5 py-0.5 rounded-sm bg-surface border-2 border-border text-xs font-display font-black tracking-wider uppercase text-border shadow-[1px_1px_0px_#1A1A2E]">
-                UNLIMITED
-              </span>
-            </div>
-            <div>
-              <h3 className="font-display font-black text-2xl text-border">Practice Mode</h3>
-              <p className="font-body text-xs text-border/70 mt-1 font-medium">Unlimited rounds to train instincts</p>
-              <div className="mt-3 font-display font-bold text-xs text-border group-hover:translate-x-1 transition-transform inline-flex items-center gap-1">
-                Start Session &rarr;
+              <div>
+                <h3 className="font-display font-black text-2xl text-border">Practice Mode</h3>
+                <p className="font-body text-xs text-border/70 mt-1 font-medium">Unlimited rounds to train instincts</p>
+                <div className="mt-3 font-display font-bold text-xs text-border group-hover:translate-x-1 transition-transform inline-flex items-center gap-1">
+                  Start Session &rarr;
+                </div>
               </div>
             </div>
           </Link>
           
           <Link 
             href="/arena"
-            className="card-brutal card-interactive p-6 bg-pastel-pink flex flex-col justify-between group min-h-[190px]"
+            className="card-brutal card-interactive bg-pastel-pink flex flex-col justify-between group min-h-[205px] overflow-hidden"
           >
-            <div className="flex items-start justify-between w-full">
-              <div className="p-3 bg-surface border-3 border-border rounded-brutal shadow-brutal-sm group-hover:scale-105 transition-transform duration-200">
-                <Swords className="w-7 h-7 text-border" />
+            <div className="ink-strip h-2 border-b-3 border-border opacity-90" aria-hidden="true" />
+            <div className="p-6 flex flex-1 flex-col justify-between">
+              <div className="flex items-start justify-between w-full">
+                <div className="p-3 bg-surface border-3 border-border rounded-brutal shadow-brutal-sm group-hover:scale-105 transition-transform duration-200">
+                  <Swords className="w-7 h-7 text-border" />
+                </div>
+                <span className="px-2.5 py-0.5 rounded-sm bg-surface border-2 border-border text-xs font-display font-black tracking-wider uppercase text-border shadow-[1px_1px_0px_#1A1A2E]">
+                  1V1 RANKED
+                </span>
               </div>
-              <span className="px-2.5 py-0.5 rounded-sm bg-surface border-2 border-border text-xs font-display font-black tracking-wider uppercase text-border shadow-[1px_1px_0px_#1A1A2E]">
-                1V1 RANKED
-              </span>
-            </div>
-            <div>
-              <h3 className="font-display font-black text-2xl text-border">Arena 1v1</h3>
-              <p className="font-body text-xs text-border/70 mt-1 font-medium">Real-time duel for Elo rating</p>
-              <div className="mt-3 font-display font-bold text-xs text-border group-hover:translate-x-1 transition-transform inline-flex items-center gap-1">
-                Find Opponent &rarr;
+              <div>
+                <h3 className="font-display font-black text-2xl text-border">Arena 1v1</h3>
+                <p className="font-body text-xs text-border/70 mt-1 font-medium">Real-time duel for Elo rating</p>
+                <div className="mt-3 font-display font-bold text-xs text-border group-hover:translate-x-1 transition-transform inline-flex items-center gap-1">
+                  Find Opponent &rarr;
+                </div>
               </div>
             </div>
           </Link>
