@@ -86,7 +86,12 @@ class PrivateLobbyServiceTest {
         arenaGuessRepository = (ArenaGuessRepository) Proxy.newProxyInstance(
                 ArenaGuessRepository.class.getClassLoader(),
                 new Class<?>[]{ArenaGuessRepository.class},
-                (proxy, method, args) -> null
+                (proxy, method, args) -> {
+                    if ("findByMatchAndPlayerOrderByAttemptNumberAsc".equals(method.getName())) {
+                        return java.util.List.of();
+                    }
+                    return null;
+                }
         );
 
         wordRepository = (WordRepository) Proxy.newProxyInstance(
@@ -387,5 +392,31 @@ class PrivateLobbyServiceTest {
         ArenaMatchResponse left = arenaService.leaveLobby(created.getId(), host);
         assertEquals(ArenaMatchStatus.CANCELLED, left.getStatus(), "WAITING match should be CANCELLED on leave");
         assertTrue(left.isLobbyClosed());
+    }
+
+    @Test
+    void matchDetails_wordRevealedOnlyWhenTerminal() {
+        User host = createUser(1L, "hostUser");
+        User friend = createUser(2L, "friendUser");
+
+        ArenaMatchResponse created = arenaService.createPrivateMatch(host);
+        assertNull(created.getWord(), "Word must be null when WAITING");
+
+        arenaService.joinPrivateMatch(created.getInviteCode(), friend);
+        ArenaMatch match = matchStore.get(created.getInviteCode());
+
+        var inProgressDetails = arenaService.getMatchDetails(match.getId(), host);
+        assertNull(inProgressDetails.getWord(), "Word must be null when IN_PROGRESS");
+
+        // Complete the match
+        match.setStatus(ArenaMatchStatus.DRAW);
+        var completedDetails = arenaService.getMatchDetails(match.getId(), host);
+        assertNotNull(completedDetails.getWord(), "Word must be revealed when match finishes in DRAW");
+        assertEquals("crane", completedDetails.getWord());
+
+        // Player 2 won also reveals word
+        match.setStatus(ArenaMatchStatus.PLAYER2_WON);
+        var p2WonDetails = arenaService.getMatchDetails(match.getId(), friend);
+        assertEquals("crane", p2WonDetails.getWord());
     }
 }

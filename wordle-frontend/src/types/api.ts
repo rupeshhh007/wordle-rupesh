@@ -61,6 +61,7 @@ export interface GameResponse {
   attemptCount: number;
   startedAt: string;
   opponentUsername?: string;
+  word?: string;
 }
 
 export interface GameDetailsResponse {
@@ -71,6 +72,7 @@ export interface GameDetailsResponse {
   startedAt: string;
   completedAt: string | null;
   guesses: GuessResponse[];
+  word?: string;
 }
 
 export interface GuessRequest {
@@ -82,6 +84,7 @@ export interface GuessResponse {
   result: LetterResult[];
   attemptNumber: number;
   gameStatus: GameStatus;
+  word?: string;
 }
 
 // ============ DAILY ============
@@ -115,6 +118,7 @@ export interface ArenaMatchResponse {
   nextMatchId?: number | null;
   lobbyClosed?: boolean;
   playerLeft?: string;
+  word?: string;
 }
 
 export interface ArenaMatchDetailsResponse {
@@ -138,6 +142,7 @@ export interface ArenaMatchDetailsResponse {
   nextMatchId?: number | null;
   lobbyClosed?: boolean;
   playerLeft?: string;
+  word?: string;
 }
 
 export interface ArenaGuessResponse {
@@ -145,6 +150,7 @@ export interface ArenaGuessResponse {
   result: LetterResult[];
   attemptNumber: number;
   matchStatus: ArenaMatchStatus;
+  word?: string;
 }
 
 export interface ArenaGuessHistoryResponse {

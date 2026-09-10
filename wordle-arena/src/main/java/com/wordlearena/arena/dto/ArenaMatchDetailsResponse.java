@@ -42,6 +42,9 @@ public class ArenaMatchDetailsResponse {
     @JsonProperty("nextMatchId")
     private Long nextMatchId;
 
+    @JsonProperty("word")
+    private String word;
+
     public ArenaMatchDetailsResponse(
             Long id,
             String player1,
@@ -56,7 +59,7 @@ public class ArenaMatchDetailsResponse {
             LocalDateTime startedAt,
             LocalDateTime completedAt
     ) {
-        this(id, player1, player2, status, winner, player1Attempts, player2Attempts, player1Guesses, player2Guesses, createdAt, startedAt, completedAt, false, null, false, false, null);
+        this(id, player1, player2, status, winner, player1Attempts, player2Attempts, player1Guesses, player2Guesses, createdAt, startedAt, completedAt, false, null, false, false, null, null);
     }
 
     public ArenaMatchDetailsResponse(
@@ -75,7 +78,7 @@ public class ArenaMatchDetailsResponse {
             boolean isPrivate,
             String inviteCode
     ) {
-        this(id, player1, player2, status, winner, player1Attempts, player2Attempts, player1Guesses, player2Guesses, createdAt, startedAt, completedAt, isPrivate, inviteCode, false, false, null);
+        this(id, player1, player2, status, winner, player1Attempts, player2Attempts, player1Guesses, player2Guesses, createdAt, startedAt, completedAt, isPrivate, inviteCode, false, false, null, null);
     }
 
     public ArenaMatchDetailsResponse(
@@ -97,6 +100,29 @@ public class ArenaMatchDetailsResponse {
             boolean rematchRequestedByPlayer2,
             Long nextMatchId
     ) {
+        this(id, player1, player2, status, winner, player1Attempts, player2Attempts, player1Guesses, player2Guesses, createdAt, startedAt, completedAt, isPrivate, inviteCode, rematchRequestedByPlayer1, rematchRequestedByPlayer2, nextMatchId, null);
+    }
+
+    public ArenaMatchDetailsResponse(
+            Long id,
+            String player1,
+            String player2,
+            ArenaMatchStatus status,
+            ArenaWinner winner,
+            int player1Attempts,
+            int player2Attempts,
+            List<ArenaGuessHistoryResponse> player1Guesses,
+            List<ArenaGuessHistoryResponse> player2Guesses,
+            LocalDateTime createdAt,
+            LocalDateTime startedAt,
+            LocalDateTime completedAt,
+            boolean isPrivate,
+            String inviteCode,
+            boolean rematchRequestedByPlayer1,
+            boolean rematchRequestedByPlayer2,
+            Long nextMatchId,
+            String word
+    ) {
         this.id = id;
         this.player1 = player1;
         this.player2 = player2;
@@ -114,6 +140,7 @@ public class ArenaMatchDetailsResponse {
         this.rematchRequestedByPlayer1 = rematchRequestedByPlayer1;
         this.rematchRequestedByPlayer2 = rematchRequestedByPlayer2;
         this.nextMatchId = nextMatchId;
+        this.word = word;
     }
 
     public Long getId() {
@@ -192,5 +219,14 @@ public class ArenaMatchDetailsResponse {
     @JsonProperty("nextMatchId")
     public Long getNextMatchId() {
         return nextMatchId;
+    }
+
+    @JsonProperty("word")
+    public String getWord() {
+        return word;
+    }
+
+    public void setWord(String word) {
+        this.word = word;
     }
 }

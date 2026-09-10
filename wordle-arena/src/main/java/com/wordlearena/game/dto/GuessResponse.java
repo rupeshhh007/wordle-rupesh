@@ -9,17 +9,28 @@ public class GuessResponse {
     private LetterResult[] result;
     private Integer attemptNumber;
     private GameStatus gameStatus;
+    private String word;
 
     public GuessResponse(
             String guess,
             LetterResult[] result,
             Integer attemptNumber,
             GameStatus gameStatus) {
+        this(guess, result, attemptNumber, gameStatus, null);
+    }
+
+    public GuessResponse(
+            String guess,
+            LetterResult[] result,
+            Integer attemptNumber,
+            GameStatus gameStatus,
+            String word) {
 
         this.guess = guess;
         this.result = result;
         this.attemptNumber = attemptNumber;
         this.gameStatus = gameStatus;
+        this.word = word;
     }
 
     public String getGuess() {
@@ -36,5 +47,9 @@ public class GuessResponse {
 
     public GameStatus getGameStatus() {
         return gameStatus;
+    }
+
+    public String getWord() {
+        return word;
     }
 }

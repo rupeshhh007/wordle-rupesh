@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Dumbbell, AlertCircle, XCircle } from "lucide-react";
-import { startGame, submitGuess, abandonGame } from "@/lib/api/games";
+import { startGame, submitGuess, abandonGame, getGame } from "@/lib/api/games";
 import {
   toBoardGuess,
   GuessResponse,
@@ -46,6 +46,7 @@ export default function PracticePage() {
   const [gameId, setGameId] = useState<number | null>(null);
   const [status, setStatus] = useState<GameStatus | null>(null);
   const [guesses, setGuesses] = useState<GuessResponse[]>([]);
+  const [solutionWord, setSolutionWord] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [keyboardState, setKeyboardState] = useState<
@@ -53,6 +54,49 @@ export default function PracticePage() {
   >(new Map());
   const [isLoading, setIsLoading] = useState(false);
   const [showAbandonModal, setShowAbandonModal] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    const savedGameId =
+      typeof window !== "undefined"
+        ? localStorage.getItem("wordle_practice_active_game_id")
+        : null;
+
+    if (!savedGameId) return;
+
+    const loadSavedGame = async () => {
+      try {
+        setIsLoading(true);
+        const game = await getGame(Number(savedGameId));
+        if (!mounted) return;
+
+        setGameId(game.id);
+        setStatus(game.status);
+        if (game.word) setSolutionWord(game.word);
+
+        if (game.guesses && game.guesses.length > 0) {
+          setGuesses(game.guesses);
+          setKeyboardState(updateKeyboardState(new Map(), game.guesses));
+        }
+
+        if (game.status === "WON" || game.status === "LOST" || game.status === "ABANDONED") {
+          localStorage.removeItem("wordle_practice_active_game_id");
+        }
+      } catch (e) {
+        if (typeof window !== "undefined") {
+          localStorage.removeItem("wordle_practice_active_game_id");
+        }
+      } finally {
+        if (mounted) setIsLoading(false);
+      }
+    };
+
+    loadSavedGame();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const handleSubmit = async (guess: string) => {
     if (!gameId) return;
@@ -67,8 +111,15 @@ export default function PracticePage() {
       setGuesses(newGuesses);
       setKeyboardState(updateKeyboardState(keyboardState, [response]));
 
+      if (response.word) {
+        setSolutionWord(response.word);
+      }
+
       if (response.gameStatus === "WON" || response.gameStatus === "LOST") {
         setStatus(response.gameStatus);
+        if (typeof window !== "undefined") {
+          localStorage.removeItem("wordle_practice_active_game_id");
+        }
       }
       clearGuess();
     } catch (err: any) {
@@ -88,8 +139,12 @@ export default function PracticePage() {
     setError(null);
     try {
       const newGame = await startGame({ gameType: "PRACTICE" });
+      if (typeof window !== "undefined") {
+        localStorage.setItem("wordle_practice_active_game_id", String(newGame.id));
+      }
       setGameId(newGame.id);
       setStatus("IN_PROGRESS");
+      setSolutionWord(null);
       setGuesses([]);
       setKeyboardState(new Map());
       clearGuess();
@@ -107,8 +162,14 @@ export default function PracticePage() {
   const handleAbandon = async () => {
     if (!gameId) return;
     try {
-      await abandonGame(gameId);
+      const res = await abandonGame(gameId);
+      if (res.word) {
+        setSolutionWord(res.word);
+      }
       setStatus("ABANDONED");
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("wordle_practice_active_game_id");
+      }
       setShowAbandonModal(false);
     } catch (err: any) {
       setError(err.message || "Failed to abandon game");
@@ -214,6 +275,24 @@ export default function PracticePage() {
               </>
             )}
 
+            {solutionWord && (
+              <div className="my-4 flex flex-col items-center">
+                <span className="text-xs font-display font-black tracking-widest text-border/70 uppercase mb-1.5">
+                  THE WORD WAS
+                </span>
+                <div className="flex gap-1.5 justify-center">
+                  {solutionWord.toUpperCase().split("").map((char, idx) => (
+                    <div
+                      key={idx}
+                      className="w-10 h-10 bg-correct text-white border-2 border-border shadow-[2px_2px_0px_#1A1A2E] rounded font-display font-black text-xl flex items-center justify-center"
+                    >
+                      {char}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="flex gap-4 w-full justify-center">
               <button
                 onClick={handlePlayAgain}
@@ -228,6 +307,14 @@ export default function PracticePage() {
                 Dashboard
               </button>
             </div>
+          </div>
+
+          <div className="mt-8 w-full max-w-lg flex flex-col items-center">
+            <Keyboard
+              onKeyPress={handleKeyPress}
+              keyboardState={keyboardState}
+              disabled={true}
+            />
           </div>
         </div>
       ) : (

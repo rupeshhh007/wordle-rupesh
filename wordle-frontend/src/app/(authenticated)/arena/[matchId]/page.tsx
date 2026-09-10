@@ -87,6 +87,7 @@ export default function ArenaMatchPage({
     new Map()
   );
   const [isLoading, setIsLoading] = useState(true);
+  const [solutionWord, setSolutionWord] = useState<string | null>(null);
   const [updatedRating, setUpdatedRating] = useState<number | null>(null);
   const [initialRating, setInitialRating] = useState<number | null>(null);
 
@@ -317,6 +318,8 @@ export default function ArenaMatchPage({
 
       setMatch(matchRes);
       setMatchDetails(detailsRes);
+      if (matchRes.word) setSolutionWord(matchRes.word);
+      if (detailsRes.word) setSolutionWord(detailsRes.word);
 
       const p1 = matchRes.player1 === username;
       const isSpec = matchRes.player1 !== username && matchRes.player2 !== username;
@@ -337,7 +340,7 @@ export default function ArenaMatchPage({
         const newKbState = new Map<string, LetterResult>();
         myGs.forEach((g) => {
           for (let i = 0; i < g.guess.length; i++) {
-            const letter = g.guess[i];
+            const letter = g.guess[i].toUpperCase();
             const result = g.result[i] as LetterResult;
             const existing = newKbState.get(letter);
             if (!existing) {
@@ -407,10 +410,12 @@ export default function ArenaMatchPage({
         }
       } else if (event.eventType === "MATCH_COMPLETED") {
         if (event.match) setMatch(event.match);
+        if (event.match?.word) setSolutionWord(event.match.word);
         try {
           const details = await getMatchDetails(matchIdNum);
           if (mounted.current) {
             setMatchDetails(details);
+            if (details.word) setSolutionWord(details.word);
             const isSpec = event.match ? event.match.player1 !== username && event.match.player2 !== username : false;
             if (isSpec) {
               setMyGuesses(details.player1Guesses);
@@ -711,12 +716,15 @@ export default function ArenaMatchPage({
 
       if (isTerminal(response.matchStatus)) {
         clearAllTimers();
+        if (response.word) setSolutionWord(response.word);
         const [updatedMatch, detailsRes] = await Promise.all([
           getMatch(matchIdNum),
           getMatchDetails(matchIdNum),
         ]);
         setMatch(updatedMatch);
         setMatchDetails(detailsRes);
+        if (updatedMatch.word) setSolutionWord(updatedMatch.word);
+        if (detailsRes.word) setSolutionWord(detailsRes.word);
         const p1 = updatedMatch.player1 === username;
         const oppGs = p1 ? detailsRes.player2Guesses : detailsRes.player1Guesses;
         setOpponentGuesses(oppGs);
@@ -1167,6 +1175,24 @@ export default function ArenaMatchPage({
                 <h2 className="font-display font-black text-3xl sm:text-4xl text-border uppercase tracking-tight mb-2">
                   {myResult === "win" ? "VICTORY" : myResult === "loss" ? "DEFEAT" : "DRAW"}
                 </h2>
+
+                {(match?.word || solutionWord) && (
+                  <div className="my-3 flex flex-col items-center">
+                    <span className="text-xs font-display font-black tracking-widest text-border/70 uppercase mb-1.5">
+                      THE WORD WAS
+                    </span>
+                    <div className="flex gap-1.5 justify-center">
+                      {(match?.word || solutionWord)!.toUpperCase().split("").map((char, idx) => (
+                        <div
+                          key={idx}
+                          className="w-10 h-10 bg-correct text-white border-2 border-border shadow-[2px_2px_0px_#1A1A2E] rounded font-display font-black text-xl flex items-center justify-center"
+                        >
+                          {char}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {updatedRating !== null && (
                   <div className="flex items-center justify-center gap-2 mb-4">

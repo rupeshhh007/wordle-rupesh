@@ -9,6 +9,7 @@ public class ArenaGuessResponse {
     private LetterResult[] result;
     private int attemptNumber;
     private ArenaMatchStatus matchStatus;
+    private String word;
 
     public ArenaGuessResponse(
             String guess,
@@ -16,10 +17,21 @@ public class ArenaGuessResponse {
             int attemptNumber,
             ArenaMatchStatus matchStatus
     ) {
+        this(guess, result, attemptNumber, matchStatus, null);
+    }
+
+    public ArenaGuessResponse(
+            String guess,
+            LetterResult[] result,
+            int attemptNumber,
+            ArenaMatchStatus matchStatus,
+            String word
+    ) {
         this.guess = guess;
         this.result = result;
         this.attemptNumber = attemptNumber;
         this.matchStatus = matchStatus;
+        this.word = word;
     }
 
     public String getGuess() {
@@ -36,5 +48,9 @@ public class ArenaGuessResponse {
 
     public ArenaMatchStatus getMatchStatus() {
         return matchStatus;
+    }
+
+    public String getWord() {
+        return word;
     }
 }

@@ -1,7 +1,6 @@
 package com.wordlearena.game.entity;
 
 import jakarta.persistence.*;
-import lombok.Setter;
 
 import java.time.LocalDateTime;
 
@@ -21,24 +20,19 @@ public class Guess {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Setter
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "game_id", nullable = false)
     private Game game;
 
-    @Setter
     @Column(nullable = false, length = 5)
     private String guess;
 
-    @Setter
     @Column(nullable = false)
     private Integer attemptNumber;
 
-    @Setter
     @Column(nullable = false)
     private String result;
 
-    @Setter
     @Column(nullable = false)
     private LocalDateTime createdAt;
 
@@ -67,5 +61,25 @@ public class Guess {
 
     public LocalDateTime getCreatedAt() {
         return createdAt;
+    }
+
+    public void setGame(Game game) {
+        this.game = game;
+    }
+
+    public void setGuess(String guess) {
+        this.guess = guess;
+    }
+
+    public void setAttemptNumber(Integer attemptNumber) {
+        this.attemptNumber = attemptNumber;
+    }
+
+    public void setResult(String result) {
+        this.result = result;
+    }
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
     }
 }

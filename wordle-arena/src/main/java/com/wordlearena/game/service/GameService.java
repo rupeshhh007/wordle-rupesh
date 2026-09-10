@@ -174,12 +174,16 @@ public class GameService {
         // 14. Save updated game
         gameRepository.save(game);
 
+        boolean isFinished = game.getStatus() == GameStatus.WON || game.getStatus() == GameStatus.LOST;
+        String solutionWord = isFinished && game.getWord() != null ? game.getWord().getWord() : null;
+
         // 15. Return response
         return new GuessResponse(
                 guess,
                 result,
                 attemptNumber,
-                game.getStatus()
+                game.getStatus(),
+                solutionWord
         );
     }
 
@@ -229,6 +233,9 @@ public class GameService {
                     })
                     .toList();
 
+            boolean isFinished = game.getStatus() == GameStatus.WON || game.getStatus() == GameStatus.LOST || game.getStatus() == GameStatus.ABANDONED;
+            String solutionWord = isFinished && game.getWord() != null ? game.getWord().getWord() : null;
+
             return new GameDetailsResponse(
                     game.getId(),
                     game.getGameType(),
@@ -236,7 +243,8 @@ public class GameService {
                     game.getAttemptCount(),
                     game.getStartedAt(),
                     game.getCompletedAt(),
-                    guessResponses
+                    guessResponses,
+                    solutionWord
             );
         }
 
@@ -272,6 +280,9 @@ public class GameService {
                         ))
                         .toList();
 
+                boolean isTerminal = match.getStatus() != ArenaMatchStatus.WAITING && match.getStatus() != ArenaMatchStatus.IN_PROGRESS;
+                String arenaSolution = isTerminal && match.getWord() != null ? match.getWord().getWord() : null;
+
                 return new GameDetailsResponse(
                         match.getId(),
                         GameType.ARENA,
@@ -279,7 +290,8 @@ public class GameService {
                         attempts,
                         started,
                         match.getCompletedAt(),
-                        guessResponses
+                        guessResponses,
+                        arenaSolution
                 );
             }
         }
@@ -288,6 +300,7 @@ public class GameService {
                 "Game with id " + gameId + " does not exist"
         );
     }
+
     private LetterResult[] parseResult(String result) {
 
         String[] values = result.split(",");
@@ -302,19 +315,26 @@ public class GameService {
 
         return results;
     }
+
     @Transactional(readOnly = true)
     public List<GameResponse> getUserGames(User user) {
 
         List<GameResponse> regularGames = gameRepository
                 .findByUserOrderByStartedAtDesc(user)
                 .stream()
-                .map(game -> new GameResponse(
-                        game.getId(),
-                        game.getGameType(),
-                        game.getStatus(),
-                        game.getAttemptCount(),
-                        game.getStartedAt()
-                ))
+                .map(game -> {
+                    boolean isFinished = game.getStatus() == GameStatus.WON || game.getStatus() == GameStatus.LOST || game.getStatus() == GameStatus.ABANDONED;
+                    String word = isFinished && game.getWord() != null ? game.getWord().getWord() : null;
+                    return new GameResponse(
+                            game.getId(),
+                            game.getGameType(),
+                            game.getStatus(),
+                            game.getAttemptCount(),
+                            game.getStartedAt(),
+                            null,
+                            word
+                    );
+                })
                 .toList();
 
         List<GameResponse> arenaGames = arenaMatchRepository
@@ -337,6 +357,8 @@ public class GameService {
 
                     int attempts = isP1 ? match.getPlayer1Attempts() : match.getPlayer2Attempts();
                     LocalDateTime started = match.getStartedAt() != null ? match.getStartedAt() : match.getCreatedAt();
+                    boolean isTerminal = match.getStatus() != ArenaMatchStatus.WAITING && match.getStatus() != ArenaMatchStatus.IN_PROGRESS;
+                    String word = isTerminal && match.getWord() != null ? match.getWord().getWord() : null;
 
                     return new GameResponse(
                             match.getId(),
@@ -344,7 +366,8 @@ public class GameService {
                             mappedStatus,
                             attempts,
                             started,
-                            opponentUsername
+                            opponentUsername,
+                            word
                     );
                 })
                 .toList();
@@ -361,6 +384,7 @@ public class GameService {
 
         return allGames;
     }
+
     @Transactional
     public GameResponse abandonGame(
             Long gameId,
@@ -388,12 +412,16 @@ public class GameService {
 
         gameRepository.save(game);
 
+        String solutionWord = game.getWord() != null ? game.getWord().getWord() : null;
+
         return new GameResponse(
                 game.getId(),
                 game.getGameType(),
                 game.getStatus(),
                 game.getAttemptCount(),
-                game.getStartedAt()
+                game.getStartedAt(),
+                null,
+                solutionWord
         );
     }
 }

@@ -34,7 +34,10 @@ export const Keyboard: React.FC<KeyboardProps> = ({ keyboardState, onKeyPress, d
       classes += 'min-w-[32px] sm:min-w-[40px] h-[50px] sm:h-[56px] ';
     }
 
-    const state = keyboardState.get(key);
+    const state =
+      keyboardState.get(key) ||
+      keyboardState.get(key.toUpperCase()) ||
+      keyboardState.get(key.toLowerCase());
     if (state === 'CORRECT') {
       classes += 'bg-correct text-white border-border ';
     } else if (state === 'PRESENT') {

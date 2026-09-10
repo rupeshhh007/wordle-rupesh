@@ -15,6 +15,7 @@ public class GameDetailsResponse {
     private LocalDateTime startedAt;
     private LocalDateTime completedAt;
     private List<GuessResponse> guesses;
+    private String word;
 
     public GameDetailsResponse(
             Long id,
@@ -24,6 +25,18 @@ public class GameDetailsResponse {
             LocalDateTime startedAt,
             LocalDateTime completedAt,
             List<GuessResponse> guesses) {
+        this(id, gameType, status, attemptCount, startedAt, completedAt, guesses, null);
+    }
+
+    public GameDetailsResponse(
+            Long id,
+            GameType gameType,
+            GameStatus status,
+            Integer attemptCount,
+            LocalDateTime startedAt,
+            LocalDateTime completedAt,
+            List<GuessResponse> guesses,
+            String word) {
 
         this.id = id;
         this.gameType = gameType;
@@ -32,6 +45,7 @@ public class GameDetailsResponse {
         this.startedAt = startedAt;
         this.completedAt = completedAt;
         this.guesses = guesses;
+        this.word = word;
     }
 
     public Long getId() {
@@ -60,5 +74,9 @@ public class GameDetailsResponse {
 
     public List<GuessResponse> getGuesses() {
         return guesses;
+    }
+
+    public String getWord() {
+        return word;
     }
 }

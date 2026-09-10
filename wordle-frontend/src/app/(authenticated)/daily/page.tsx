@@ -39,15 +39,12 @@ export default function DailyPage() {
   const [gameId, setGameId] = useState<number | null>(null);
   const [status, setStatus] = useState<GameStatus>('IN_PROGRESS');
   const [guesses, setGuesses] = useState<GuessResponse[]>([]);
+  const [solutionWord, setSolutionWord] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [keyboardState, setKeyboardState] = useState<Map<string, LetterResult>>(new Map());
   const [stats, setStats] = useState<StatsResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-
-  
-
-
 
   const handleSubmit = async (guess: string) => {
     if (guess.length !== 5 || isSubmitting || status !== 'IN_PROGRESS') return;
@@ -65,6 +62,9 @@ export default function DailyPage() {
       
       setKeyboardState((prev) => updateKeyboardState(prev, res.guess, res.result));
       setStatus(res.gameStatus);
+      if (res.word) {
+        setSolutionWord(res.word);
+      }
 
       if (res.gameStatus === 'WON' || res.gameStatus === 'LOST') {
         try {
@@ -90,8 +90,6 @@ export default function DailyPage() {
     isActive: status === 'IN_PROGRESS' && !isSubmitting
   });
 
-
-
   useEffect(() => {
     let mounted = true;
 
@@ -102,19 +100,22 @@ export default function DailyPage() {
 
         setGameId(game.id);
         setStatus(game.status);
+        if (game.word) setSolutionWord(game.word);
 
-        if ((game.status === 'IN_PROGRESS' && game.attemptCount > 0) || game.status === 'WON' || game.status === 'LOST') {
+        try {
           const details = await getDailyResult();
-          if (!mounted) return;
-          
-          setGuesses(details.guesses || []);
-          
-          let currentMap = new Map<string, LetterResult>();
-          for (const g of (details.guesses || [])) {
-            currentMap = updateKeyboardState(currentMap, g.guess, g.result);
+          if (mounted) {
+            if (details.word) setSolutionWord(details.word);
+            if (details.guesses && details.guesses.length > 0) {
+              setGuesses(details.guesses);
+              let currentMap = new Map<string, LetterResult>();
+              for (const g of details.guesses) {
+                currentMap = updateKeyboardState(currentMap, g.guess, g.result);
+              }
+              setKeyboardState(currentMap);
+            }
           }
-          setKeyboardState(currentMap);
-        }
+        } catch {}
 
         if (game.status === 'WON' || game.status === 'LOST') {
           try {
@@ -217,6 +218,24 @@ export default function DailyPage() {
                 </>
               )}
 
+              {solutionWord && (
+                <div className="my-4 flex flex-col items-center">
+                  <span className="text-xs font-display font-black tracking-widest text-border/70 uppercase mb-1.5">
+                    THE WORD WAS
+                  </span>
+                  <div className="flex gap-1.5 justify-center">
+                    {solutionWord.toUpperCase().split('').map((char, idx) => (
+                      <div
+                        key={idx}
+                        className="w-10 h-10 bg-correct text-white border-2 border-border shadow-[2px_2px_0px_#1A1A2E] rounded font-display font-black text-xl flex items-center justify-center"
+                      >
+                        {char}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {stats && (
                 <div className="mb-6 font-display font-bold text-xs bg-pastel-green px-4 py-1.5 rounded-brutal border-2 border-border shadow-brutal-sm inline-flex items-center gap-2">
                   <Flame className="w-3.5 h-3.5 text-orange-500 fill-orange-500" />
@@ -238,6 +257,14 @@ export default function DailyPage() {
                   Dashboard
                 </Link>
               </div>
+            </div>
+
+            <div className="mt-8 flex flex-col items-center">
+              <Keyboard
+                keyboardState={keyboardState}
+                onKeyPress={handleKeyPress}
+                disabled={true}
+              />
             </div>
           </div>
         ) : (

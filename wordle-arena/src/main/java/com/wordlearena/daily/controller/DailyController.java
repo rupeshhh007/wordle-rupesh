@@ -6,6 +6,7 @@ import com.wordlearena.game.dto.GameDetailsResponse;
 import com.wordlearena.game.dto.GameResponse;
 import com.wordlearena.game.dto.GuessResponse;
 import com.wordlearena.game.entity.Game;
+import com.wordlearena.game.entity.GameStatus;
 import com.wordlearena.game.service.GameService;
 import com.wordlearena.user.entity.User;
 import com.wordlearena.user.repository.UserRepository;
@@ -41,12 +42,17 @@ public class DailyController {
         Game game =
                 dailyService.getOrCreateDailyGame(user);
 
+        boolean isFinished = game.getStatus() == GameStatus.WON || game.getStatus() == GameStatus.LOST || game.getStatus() == GameStatus.ABANDONED;
+        String solutionWord = isFinished && game.getWord() != null ? game.getWord().getWord() : null;
+
         GameResponse response = new GameResponse(
                 game.getId(),
                 game.getGameType(),
                 game.getStatus(),
                 game.getAttemptCount(),
-                game.getStartedAt()
+                game.getStartedAt(),
+                null,
+                solutionWord
         );
 
         return ResponseEntity.ok(response);

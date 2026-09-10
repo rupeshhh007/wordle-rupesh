@@ -13,6 +13,7 @@ public class GameResponse {
     private Integer attemptCount;
     private LocalDateTime startedAt;
     private String opponentUsername;
+    private String word;
 
     public GameResponse(
             Long id,
@@ -21,7 +22,7 @@ public class GameResponse {
             Integer attemptCount,
             LocalDateTime startedAt
     ) {
-        this(id, gameType, status, attemptCount, startedAt, null);
+        this(id, gameType, status, attemptCount, startedAt, null, null);
     }
 
     public GameResponse(
@@ -32,12 +33,25 @@ public class GameResponse {
             LocalDateTime startedAt,
             String opponentUsername
     ) {
+        this(id, gameType, status, attemptCount, startedAt, opponentUsername, null);
+    }
+
+    public GameResponse(
+            Long id,
+            GameType gameType,
+            GameStatus status,
+            Integer attemptCount,
+            LocalDateTime startedAt,
+            String opponentUsername,
+            String word
+    ) {
         this.id = id;
         this.gameType = gameType;
         this.status = status;
         this.attemptCount = attemptCount;
         this.startedAt = startedAt;
         this.opponentUsername = opponentUsername;
+        this.word = word;
     }
 
     public Long getId() {
@@ -62,5 +76,9 @@ public class GameResponse {
 
     public String getOpponentUsername() {
         return opponentUsername;
+    }
+
+    public String getWord() {
+        return word;
     }
 }

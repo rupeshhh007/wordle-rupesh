@@ -276,6 +276,9 @@ public class ArenaService {
                         .map(g -> toGuessHistoryResponse(g, maskP2))
                         .toList();
 
+        boolean isTerminal = isCompletedStatus(match.getStatus()) || match.getStatus() == ArenaMatchStatus.CANCELLED;
+        String solutionWord = isTerminal && match.getWord() != null ? match.getWord().getWord() : null;
+
         return new ArenaMatchDetailsResponse(
                 match.getId(),
 
@@ -311,7 +314,9 @@ public class ArenaService {
 
                 match.isRematchRequestedByPlayer2(),
 
-                match.getNextMatchId()
+                match.getNextMatchId(),
+
+                solutionWord
         );
     }
 
@@ -512,11 +517,15 @@ public class ArenaService {
             );
         }
 
+        boolean isTerminal = isCompletedStatus(match.getStatus()) || match.getStatus() == ArenaMatchStatus.CANCELLED;
+        String solutionWord = isTerminal && match.getWord() != null ? match.getWord().getWord() : null;
+
         return new ArenaGuessResponse(
                 guess,
                 result,
                 attemptNumber,
-                match.getStatus()
+                match.getStatus(),
+                solutionWord
         );
     }
 
@@ -1110,6 +1119,9 @@ public class ArenaService {
     private ArenaMatchResponse toResponse(
             ArenaMatch match) {
 
+        boolean isTerminal = isCompletedStatus(match.getStatus()) || match.getStatus() == ArenaMatchStatus.CANCELLED;
+        String solutionWord = isTerminal && match.getWord() != null ? match.getWord().getWord() : null;
+
         return new ArenaMatchResponse(
                 match.getId(),
                 match.getPlayer1().getUsername(),
@@ -1129,7 +1141,8 @@ public class ArenaService {
                 match.isRematchRequestedByPlayer2(),
                 match.getNextMatchId(),
                 match.isLobbyClosed(),
-                match.getPlayerLeft()
+                match.getPlayerLeft(),
+                solutionWord
         );
     }
 }

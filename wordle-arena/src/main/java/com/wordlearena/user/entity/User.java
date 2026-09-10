@@ -1,7 +1,6 @@
 package com.wordlearena.user.entity;
 
 import jakarta.persistence.*;
-import lombok.Setter;
 
 import java.time.LocalDateTime;
 
@@ -13,19 +12,15 @@ public class User {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Setter
     @Column(nullable = false, unique = true)
     private String username;
 
-    @Setter
     @Column(nullable = false, unique = true)
     private String email;
 
-    @Setter
     @Column(nullable = false)
     private String passwordHash;
 
-    @Setter
     @Column(nullable = false)
     private Integer rating = 1000;
 
@@ -76,5 +71,21 @@ public class User {
 
     public LocalDateTime getUpdatedAt() {
         return updatedAt;
+    }
+
+    public void setUsername(String username) {
+        this.username = username;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
+    public void setPasswordHash(String passwordHash) {
+        this.passwordHash = passwordHash;
+    }
+
+    public void setRating(Integer rating) {
+        this.rating = rating;
     }
 }
