@@ -44,9 +44,9 @@
 body {
   background-color: var(--color-bg);
   background-image:
-    linear-gradient(rgba(26, 26, 46, 0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(26, 26, 46, 0.05) 1px, transparent 1px);
-  background-size: 22px 22px;
+    linear-gradient(rgba(26, 26, 46, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(26, 26, 46, 0.025) 1px, transparent 1px);
+  background-size: 28px 28px;
   color: var(--color-text);
   font-family: var(--font-body);
 }
@@ -100,42 +100,6 @@ body {
   background: var(--color-pastel-yellow);
   box-shadow: var(--shadow-brutal);
   transform: translate(-1px, -1px);
-}
-
-.stamp-brutal {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  border: 2px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  box-shadow: var(--shadow-brutal-sm);
-  font-family: var(--font-display);
-  font-weight: 900;
-  text-transform: uppercase;
-}
-
-.ink-strip {
-  background-image: repeating-linear-gradient(
-    -45deg,
-    var(--color-border) 0,
-    var(--color-border) 6px,
-    transparent 6px,
-    transparent 12px
-  );
-}
-
-.paper-lift {
-  position: relative;
-}
-
-.paper-lift::after {
-  content: "";
-  position: absolute;
-  inset: 10px -8px -8px 10px;
-  z-index: -1;
-  border: 3px solid var(--color-border);
-  border-radius: inherit;
-  background: var(--color-primary);
 }
 
 /* ============ TACTILE KEYBOARD KEYS ============ */
