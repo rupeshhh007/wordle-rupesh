@@ -1,0 +1,45 @@
+## Vercel Web Analytics Installation
+
+Successfully installed and configured Vercel Web Analytics for the wordle-frontend Next.js project.
+
+### Changes Made
+
+#### 1. Package Installation
+- **File Modified**: `package.json`
+- **Change**: Added `@vercel/analytics` version `^2.0.1` as a dependency
+- **Lock File Updated**: `package-lock.json` updated with 375 new packages
+
+#### 2. Analytics Configuration
+- **File Modified**: `src/app/layout.tsx`
+- **Changes**:
+  - Added import statement: `import { Analytics } from "@vercel/analytics/next";`
+  - Added `<Analytics />` component inside the `<body>` element, placed after the `{children}` to ensure it loads after the main content
+
+### Implementation Details
+
+Following the official Vercel documentation (fetched from https://vercel.com/docs/analytics/quickstart), I implemented the framework-specific setup for Next.js App Router:
+
+1. **Framework Identified**: Next.js 16.3.4 with App Router (confirmed by examining the project structure)
+2. **Package Manager**: npm (detected from existing package-lock.json)
+3. **Installation Location**: Root layout file at `src/app/layout.tsx`, which is the entry point for all pages in the app
+
+### Verification
+
+✓ **Build Test**: Ran `npm run build` - Build completed successfully with no errors
+✓ **Linter**: Ran `npm run lint` - No linting errors introduced
+✓ **Type Checking**: TypeScript compilation passed during build
+✓ **Package Installation**: All dependencies installed without vulnerabilities
+
+### Next Steps for Deployment
+
+To complete the setup:
+1. Deploy the application to Vercel using `vercel deploy`
+2. Enable Web Analytics in the Vercel Dashboard (Project Settings → Analytics → Enable)
+3. Verify installation by checking browser Network tab for requests to `/<unique-path>/view`
+
+### Code Quality
+
+- Preserved existing code structure and formatting
+- Maintained consistent indentation and style
+- Followed Next.js best practices for Analytics component placement
+- No breaking changes introduced
