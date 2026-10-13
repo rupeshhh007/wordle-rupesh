@@ -21,6 +21,33 @@
 
 ---
 
+## Screenshots
+
+A look at the live Wordle Arena interface — the dashboard and daily puzzle.
+
+<table>
+  <tr>
+    <td width="50%" align="center">
+      <a href="https://github.com/user-attachments/assets/663042d0-0b01-4f41-b533-c642dcbdd6c2">
+        <img src="https://github.com/user-attachments/assets/663042d0-0b01-4f41-b533-c642dcbdd6c2" alt="Wordle Arena dashboard screenshot" width="100%" />
+      </a>
+      <br />
+      <sub><strong>Dashboard</strong> — game modes and player overview</sub>
+    </td>
+    <td width="50%" align="center">
+      <a href="https://github.com/user-attachments/assets/1ac4f804-647c-4b80-893b-6817d7cb81ae">
+        <img src="https://github.com/user-attachments/assets/1ac4f804-647c-4b80-893b-6817d7cb81ae" alt="Wordle Arena daily puzzle screenshot" width="100%" />
+      </a>
+      <br />
+      <sub><strong>Daily challenge</strong> — five-letter puzzle board</sub>
+    </td>
+  </tr>
+</table>
+
+<sub>Images originally shared in the <a href="https://github.com/rupeshhh007/rupeshhh007#-wordle-with-a-competitive-streak">GitHub profile README</a>.</sub>
+
+---
+
 ## Overview
 
 Wordle Arena turns the familiar five-letter puzzle loop into a competitive web app. Players can train in practice mode, solve a shared daily puzzle, challenge friends in private rooms, queue into live arena matches, spectate active duels, track personal stats, and climb an Elo-powered leaderboard.
